@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="人生開外掛的精力管理術：客製評測系統報告。" />
+    <title>精力管理術評測系統</title>
+    
+    <!-- 引入字型與樣式 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    
+    <!-- 引入 Chart.js 用於雷達圖 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    
+    <!-- Demo 提示條 (無網址參數時顯示) -->
+    <div id="demo-badge" class="demo-badge hidden">
+      <span>💡 目前為 <b>模擬體驗模式</b> (無網址參數)。實際使用時，學員將點選專屬連結自動登入驗證。</span>
+    </div>
+
+    <!-- 1. 載入中畫面 -->
+    <section id="loading-view" class="view-panel active">
+      <div class="spinner-box">
+        <div class="circle-spinner"></div>
+        <p>安全驗證中，請稍候...</p>
+      </div>
+    </section>
+
+    <!-- 2. 驗證錯誤畫面 -->
+    <section id="error-view" class="view-panel hidden">
+      <div class="panel error-card">
+        <div class="error-icon">⚠️</div>
+        <h2>驗證失效</h2>
+        <p id="error-message">無法取得評測資料，可能連結已失效或信箱未預先註冊。</p>
+        <p class="error-hint">請檢查您所點擊的連結，或聯絡您的課程顧問。</p>
+      </div>
+    </section>
+
+    <!-- 3. 歡迎 / 準備作答畫面 -->
+    <section id="welcome-view" class="view-panel hidden">
+      <main class="welcome-card panel">
+        <header class="welcome-header">
+          <p class="eyebrow">Energy Survey</p>
+          <h1>你不是懶，而是能量低</h1>
+          <p class="sub-title">人生開外掛的精力管理術</p>
+        </header>
+
+        <article class="welcome-body">
+          <div class="user-greeting">
+            親愛的 <strong id="welcome-name">學員</strong> 您好：
+          </div>
+          <p>本次評測共包含 <strong>24 題</strong> 關於體能、情緒、思維與精神的精力狀況檢測。</p>
+          <div class="alert-box" id="welcome-status-box">
+            <span class="status-badge" id="test-type-badge">前測</span>
+            <p id="welcome-status-desc">這是您第一次進行評測，此數據將作為您精力管理的基準點。</p>
+          </div>
+          <div class="guide-box">
+            <strong>💡 作答說明</strong>
+            <ul>
+              <li>請依據您個人「最近一週」的實際現況進行評估。</li>
+              <li>評分為 0 - 5 分，0 代表「完全不同意」，5 代表「非常同意」。</li>
+              <li>請依直覺作答，越符合現狀，分析結果越準確。</li>
+            </ul>
+          </div>
+        </article>
+
+        <footer class="welcome-footer">
+          <button id="start-btn" class="primary-button">評測</button>
+        </footer>
+      </main>
+    </section>
+
+    <!-- 4. 問卷作答畫面 -->
+    <section id="quiz-view" class="view-panel hidden">
+      <main class="quiz-card panel">
+        <header class="quiz-header">
+          <div class="quiz-progress-row">
+            <span class="category-tag" id="quiz-category">體能維度</span>
+            <span class="progress-text" id="quiz-progress-text">1 / 24</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="quiz-progress-bar" style="width: 4%"></div>
+          </div>
+        </header>
+
+        <article class="quiz-body">
+          <p class="question-number" id="question-id">Q1</p>
+          <h2 class="question-text" id="question-text">載入中...</h2>
+          
+          <div class="rating-legend">
+            <span>非常不同意 (0分)</span>
+            <span>非常同意 (5分)</span>
+          </div>
+          
+          <div class="quiz-options">
+            <button class="option-btn" data-score="0">0</button>
+            <button class="option-btn" data-score="1">1</button>
+            <button class="option-btn" data-score="2">2</button>
+            <button class="option-btn" data-score="3">3</button>
+            <button class="option-btn" data-score="4">4</button>
+            <button class="option-btn" data-score="5">5</button>
+          </div>
+        </article>
+
+        <footer class="quiz-footer">
+          <button id="prev-btn" class="ghost-button" disabled>上一題</button>
+        </footer>
+      </main>
+    </section>
+
+    <!-- 5. 結果報告畫面 -->
+    <section id="report-view" class="view-panel hidden">
+      <main class="report-shell">
+        
+        <!-- 頂部 Hero 區塊 -->
+        <header class="report-hero">
+          <div class="brand-block">
+            <p class="eyebrow">Energy Survey Report</p>
+            <h1>你不是懶，而是能量低</h1>
+            <p>人生開外掛的精力管理術結果對比報告</p>
+          </div>
+          <div class="hero-actions">
+            <span class="pill-badge" id="report-mode-tag">前後測對比</span>
+          </div>
+        </header>
+
+        <!-- 個人基本資料與得分綜覽 -->
+        <section class="profile-score-grid">
+          <!-- 基本資料 -->
+          <article class="panel profile-panel" aria-label="受測者基本資料">
+            <div class="panel-title">
+              <p class="eyebrow">Profile</p>
+              <h2>學員基本資料</h2>
+            </div>
+            <dl class="profile-list">
+              <div>
+                <dt>姓名</dt>
+                <dd id="profile-name">載入中...</dd>
+              </div>
+              <div>
+                <dt>電子信箱</dt>
+                <dd id="profile-email">載入中...</dd>
+              </div>
+              <div>
+                <dt>檢測模式</dt>
+                <dd id="profile-mode">前/後測對比</dd>
+              </div>
+            </dl>
+          </article>
+
+          <!-- 分數比較 -->
+          <article class="panel score-panel" aria-label="分數對比統計">
+            <p class="eyebrow">Score Overview</p>
+            <div class="score-compare">
+              <!-- 前測分數 -->
+              <div class="score-card-small before-card">
+                <span>前次基準</span>
+                <strong id="before-total-score">-</strong>
+              </div>
+              <!-- 後測分數 -->
+              <div class="score-card-main after-card" id="after-total-container">
+                <span id="after-total-label">輔導後測</span>
+                <strong id="after-total-score">-</strong>
+              </div>
+              <!-- 效果提升 -->
+              <div class="score-card-small lift-card" id="lift-container">
+                <span>提升效果</span>
+                <strong id="lift-score">-</strong>
+              </div>
+            </div>
+            <div class="score-note">
+              <span id="status-pill">進行中</span>
+              <p id="core-summary-text">正在分析數據，請稍後...</p>
+            </div>
+          </article>
+        </section>
+
+        <!-- 圖表與核心診斷 -->
+        <section class="insight-grid">
+          <!-- 雷達圖與四大維度 -->
+          <article class="panel dimension-panel">
+            <div class="panel-title inline-title">
+              <div>
+                <p class="eyebrow">Four Dimensions</p>
+                <h2>四大維度能量分析</h2>
+              </div>
+              <div class="legend" id="chart-legend">
+                <span><i class="before-key"></i>前次</span>
+                <span class="after-legend-item"><i class="after-key"></i>輔導後測</span>
+              </div>
+            </div>
+            <div class="dimension-layout">
+              <div class="dimension-list" id="dimension-list-container">
+                <!-- 動態載入四大維度分數 -->
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="radarCanvas" width="500" height="400" aria-label="四大維度前後測雷達圖"></canvas>
+              </div>
+            </div>
+          </article>
+
+          <!-- 核心診斷文案 -->
+          <article class="panel coach-panel">
+            <p class="eyebrow">Coach Diagnosis</p>
+            <h2 id="diagnosis-title">能量診斷</h2>
+            <p id="diagnosis-body-text">正在分析您的維度強弱項，為您規劃專屬的能量管理策略...</p>
+            
+            <div class="book-quote-card">
+              <img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=300" alt="書籍封面視覺參考" id="book-img" />
+              <div>
+                <strong>管理你的精力，而不是時間。</strong>
+                <p>四大能量電池彼此依存：優先修補漏電的最低電量，再複製已經改善的成功條件，是開外掛最快的途徑。</p>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <!-- 12 項知識技術指標 (唯讀模式) -->
+        <section class="panel skills-panel" aria-label="12 項指標指標明細">
+          <div class="panel-title">
+            <p class="eyebrow">12 Skills Metrics</p>
+            <h2>12 項知識技術得分指標</h2>
+            <p class="helper-text">前次成績為唯讀基準，後次成績顯示您的進步幅度。</p>
+          </div>
+          <div class="skill-grid" id="skill-grid-container">
+            <!-- 動態載入 12 項技能卡片 -->
+          </div>
+        </section>
+
+        <!-- 輔導建議與優先追蹤題目 -->
+        <section class="recommend-grid">
+          <!-- 輔導後建議 -->
+          <article class="panel action-panel">
+            <p class="eyebrow">Action Items</p>
+            <h2>輔導後行動建議</h2>
+            <div class="action-list" id="action-list-container">
+              <!-- 動態載入行動點 -->
+            </div>
+          </article>
+
+          <!-- 優先追蹤題目 -->
+          <article class="panel question-panel">
+            <p class="eyebrow">Focus Areas</p>
+            <h2>優先追蹤與改善題目</h2>
+            <div class="question-watch-list" id="watch-list-container">
+              <!-- 動態載入最低分題目 -->
+            </div>
+          </article>
+        </section>
+
+        <!-- 頁尾聲明 -->
+        <footer class="report-footer">
+          <p>© 精力管理術 評測分析系統. All rights reserved.</p>
+        </footer>
+
+      </main>
+    </section>
+
+    <!-- 引入主邏輯腳本 -->
+    <script src="app.js"></script>
+  </body>
+</html>
