@@ -24,7 +24,10 @@ const CONFIG = {
   // 郵件通知設定
   ENABLE_EMAIL_NOTIFICATION: true, // 是否開啟郵件通知
   COACH_EMAIL: "mandyaispace@gmail.com", // 您的信箱（教練），多個信箱用逗號隔開
-  OWNER_EMAIL: "Amychou43@gmail.com"  // 業主的信箱，多個信箱用逗號隔開
+  OWNER_EMAIL: "Amychou43@gmail.com",  // 業主的信箱，多個信箱用逗號隔開
+  
+  // 後台管理密碼設定
+  ADMIN_PASSWORD: "admin123" // 👈 題目後台管理密碼 (預設 admin123，您可在此修改)
 };
 
 // 欄位定義索引 (以 0 為基準，A=0, B=1...)
@@ -39,10 +42,40 @@ const COL = {
 };
 
 /**
- * 處理 GET 請求 (查詢學員狀態與歷史分數)
- * 網址格式：https://script.google.com/macros/s/.../exec?email=student@example.com&token=a8f9
+ * 處理 GET 請求 (查詢學員狀態與歷史分數，或獲取題目清單)
  */
 function doGet(e) {
+  const action = e.parameter.action;
+  
+  // 1. 處理讀取題目的請求
+  if (action === "get_questions") {
+    try {
+      const sheet = checkAndCreateQuestionsSheet();
+      const data = sheet.getDataRange().getValues();
+      const questions = [];
+      
+      // 從第二列開始讀取題目 (排除標題列)
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] !== "" && data[i][0] !== null) {
+          questions.push({
+            q: Number(data[i][0]),
+            code: data[i][1].toString(),
+            skill: data[i][2].toString(),
+            text: data[i][3].toString()
+          });
+        }
+      }
+      
+      // 依題號排序
+      questions.sort((a, b) => a.q - b.q);
+      
+      return makeResponse({ success: true, questions: questions });
+    } catch (err) {
+      return makeResponse({ success: false, error: "讀取題目失敗: " + err.message }, 500);
+    }
+  }
+
+  // 2. 原本的學員狀態查詢請求
   const email = e.parameter.email;
   const token = e.parameter.token;
   
@@ -126,10 +159,7 @@ function doGet(e) {
 }
 
 /**
- * 處理 POST 請求 (提交前測或後測分數，並在首次填寫時自動註冊)
- * Payload 格式：
- * 首次填寫：{"email": "...", "name": "...", "testType": "pre", "scores": [5, 4, ...]}
- * 後續填寫：{"email": "...", "token": "...", "testType": "post", "scores": [5, 4, ...]}
+ * 處理 POST 請求 (提交前測或後測分數，新註冊，或由後台更新題目)
  */
 function doPost(e) {
   let params;
@@ -139,6 +169,42 @@ function doPost(e) {
     return makeResponse({ success: false, error: "無效的 JSON 內容" }, 400);
   }
   
+  const action = params.action;
+  
+  // 1. 處理修改題目的請求
+  if (action === "update_questions") {
+    const password = params.password;
+    const questions = params.questions;
+    
+    if (password !== CONFIG.ADMIN_PASSWORD) {
+      return makeResponse({ success: false, error: "管理密碼錯誤，拒絕儲存！" }, 403);
+    }
+    
+    if (!questions || !Array.isArray(questions) || questions.length !== 24) {
+      return makeResponse({ success: false, error: "題目數量不正確 (須剛好為 24 題)" }, 400);
+    }
+    
+    try {
+      const sheet = checkAndCreateQuestionsSheet();
+      
+      // 格式化為 24 列寫入的陣列
+      const rowsToWrite = questions.map(q => {
+        return [Number(q.q), q.code.toString(), q.skill.toString(), q.text.toString()];
+      });
+      
+      // 排序確保寫入題號正確 1~24
+      rowsToWrite.sort((a, b) => a[0] - b[0]);
+      
+      // 覆寫 2 到 25 列
+      sheet.getRange(2, 1, 24, 4).setValues(rowsToWrite);
+      
+      return makeResponse({ success: true, message: "所有題目修改已同步至試算表！" });
+    } catch (err) {
+      return makeResponse({ success: false, error: "寫入題目失敗: " + err.message }, 500);
+    }
+  }
+  
+  // 2. 原本的提交測驗分數請求
   const email = params.email;
   const name = params.name; // 新註冊時傳遞的姓名
   const token = params.token; // 已註冊學員傳遞的憑證
@@ -146,7 +212,7 @@ function doPost(e) {
   const scores = params.scores;
   
   if (!email || !testType || !scores || !Array.isArray(scores) || scores.length !== 24) {
-    return makeResponse({ success: false, error: "參數遺失或分數格式不正確 (須為 24 題分數)" }, 400);
+    return makeResponse({ success: false, error: "參數遺失或分數格式不正確" }, 400);
   }
   
   try {
@@ -416,4 +482,46 @@ function makeResponse(data, status = 200) {
                                .setMimeType(ContentService.MimeType.JSON);
   data.code = status;
   return output;
+}
+
+/**
+ * 輔助函數：檢查並自動建立「題目設定」分頁，且填入 24 題預設題目
+ */
+function checkAndCreateQuestionsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("題目設定");
+  if (!sheet) {
+    sheet = ss.insertSheet("題目設定");
+    sheet.appendRow(["題號", "維度代碼", "指標代碼", "題目敘述"]);
+    
+    const defaultQuestions = [
+      [1, "AC2", "AC", "我能在繁忙的工作生活中找到時間進行運動，並且感到運動後精力充沛。"],
+      [2, "AC1", "AC", "我每週至少進行三次體能運動（如有氧運動、瑜伽或力量訓練），來保持體能。"],
+      [3, "CC2", "CC", "當我進入心流狀態時，我的工作效率和創造力會大幅提升。"],
+      [4, "DA2", "DA", "我的工作和生活中有一個清晰的方向，並且我的行為與這個目標一致。"],
+      [5, "CC1", "CC", "我經常進入一種完全投入工作、感覺時間流逝的心流狀態。"],
+      [6, "CA2", "CA", "我會使用具體的策略（如番茄工作法）來提高我的專注力和工作效率。"],
+      [7, "DC2", "DC", "我會思考和探索生活中更深層次的意義，這使我在面對困難時更有韌性。"],
+      [8, "BB1", "BB", "當我感受到壓力或焦慮時，我能快速識別並有效處理這些負向情緒。"],
+      [9, "DC1", "DC", "我能在日常生活中找到深刻的意義，無論是工作還是私人時間。"],
+      [10, "BB2", "BB", "我知道如何在情緒低潮時給自己短暫的休息，幫助自己恢復平靜。"],
+      [11, "CB2", "CB", "我會定期給自己放空的時間，幫助自己重新集中注意力。"],
+      [12, "BA2", "BA", "在面對挑戰時，我能主動尋找積極的視角，並讓自己保持正向情緒。"],
+      [13, "AB1", "AB", "我每晚通常能獲得足夠的睡眠（7-8小時），並且早晨感覺精神充沛。"],
+      [14, "BA1", "BA", "我每天有意識地進行一些活動來提升我的心情，如冥想、感恩或娛樂。"],
+      [15, "DB2", "DB", "我會定期反思自己的使命，並且將其融入到日常行為中。"],
+      [16, "DB1", "DB", "我的工作或生活中有一種使命感，讓我對所做的事充滿熱情和動力。"],
+      [17, "BC1", "BC", "我有一套有效的壓力管理方法，能在忙碌的工作中保持冷靜。"],
+      [18, "AA1", "AA", "我每天的飲食選擇能提供我足夠的能量 and 營養來應對工作和日常活動。"],
+      [19, "AA2", "AA", "我能維持穩定的飲食習慣，並避免因為忙碌而忽視健康飲食。"],
+      [20, "CB1", "CB", "我知道如何通過短暫的休息來放鬆大腦，讓自己更快進入專注狀態。"],
+      [21, "BC2", "BC", "我會定期進行放鬆或冥想練習，來減輕工作和生活中的壓力。"],
+      [22, "DA1", "DA", "我有明確的長期目標，並且經常回顧自己是否在朝著這些目標前進。"],
+      [23, "CA1", "CA", "我能在工作中保持長時間的專注，不易分心或打斷。"],
+      [24, "AB2", "AB", "我有良好的睡眠習慣，通常能夠快速入睡並保持整夜不被打斷。"]
+    ];
+    
+    sheet.getRange(2, 1, 24, 4).setValues(defaultQuestions);
+  }
+  return sheet;
 }

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>精力管理系統 - 題目後台管理</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* 後台專用樣式 */
+    .admin-container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1.25rem;
+    }
+    .admin-card {
+      background-color: var(--panel);
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-md);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      transition: var(--transition);
+    }
+    .admin-login-card {
+      max-width: 420px;
+      margin: 15vh auto;
+      text-align: center;
+    }
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      border-bottom: 1.5px solid var(--line);
+      padding-bottom: 1rem;
+    }
+    .admin-header h1 {
+      margin-bottom: 0;
+      font-size: 1.8rem;
+      color: var(--teal-dark);
+    }
+    .question-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .question-row {
+      display: grid;
+      grid-template-columns: 80px 180px 1fr;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 1.25rem;
+      border-radius: 10px;
+      background-color: var(--paper);
+      border: 1px solid var(--line);
+      transition: var(--transition);
+    }
+    .question-row:hover {
+      border-color: var(--teal);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-sm);
+    }
+    .q-badge {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: var(--muted);
+      text-align: center;
+    }
+    .q-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .q-meta-dim {
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      color: #fff;
+      display: inline-block;
+      width: fit-content;
+    }
+    .q-meta-skill {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .q-textarea {
+      width: 100%;
+      min-height: 55px;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.95rem;
+      color: var(--ink);
+      background-color: var(--panel);
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      resize: vertical;
+      outline: none;
+      transition: var(--transition);
+      line-height: 1.5;
+    }
+    .q-textarea:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(31, 148, 131, 0.1);
+    }
+    .sticky-footer {
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(10px);
+      border-top: 1.5px solid var(--line);
+      padding: 1rem 0;
+      margin-top: 3rem;
+      box-shadow: 0 -4px 12px rgba(26, 34, 31, 0.04);
+      z-index: 100;
+    }
+    .footer-content {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .save-status {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .save-status.success { color: var(--after); }
+    .save-status.error { color: var(--color-spirit); }
+    .save-status.loading { color: var(--teal); }
+
+    .logout-btn {
+      background: transparent;
+      border: 1px solid var(--muted);
+      color: var(--body);
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .logout-btn:hover {
+      border-color: var(--color-spirit);
+      color: var(--color-spirit);
+    }
+    
+    @media (max-width: 767px) {
+      .question-row {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+      }
+      .q-badge { text-align: left; }
+      .q-meta { flex-direction: row; align-items: center; gap: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 後台密碼登入區 -->
+  <main id="login-section" class="admin-container">
+    <div class="admin-card admin-login-card">
+      <header style="margin-bottom: 2rem;">
+        <h1 style="color: var(--teal-dark); font-size: 1.8rem; margin-bottom: 0.5rem;">精力管理評測</h1>
+        <p style="color: var(--muted); font-size: 0.95rem;">題目後台管理系統</p>
+      </header>
+      
+      <div class="form-group" style="text-align: left;">
+        <label for="admin-pass">請輸入後台管理密碼</label>
+        <input type="password" id="admin-pass" class="form-control" placeholder="請輸入管理密碼" />
+      </div>
+      
+      <button id="login-btn" class="primary-button" style="width: 100%; margin-top: 1.5rem;">登入後台</button>
+      <p id="login-error" style="color: var(--color-spirit); margin-top: 1rem; font-size: 0.9rem; font-weight: 700;" class="hidden"></p>
+    </div>
+  </main>
+
+  <!-- 2. 後台編輯管理面板區 -->
+  <main id="editor-section" class="admin-container hidden">
+    <div class="admin-card">
+      <header class="admin-header">
+        <div>
+          <h1>精力管理評測 - 題目管理</h1>
+          <p style="color: var(--muted); font-size: 0.9rem; margin-top: 0.25rem; margin-bottom: 0;">直接修改下方題目內容，點擊底部儲存即可更新至正式網頁。</p>
+        </div>
+        <button id="logout-btn" class="logout-btn">登出</button>
+      </header>
+
+      <section class="question-list" id="questions-container">
+        <!-- 題目會動態渲染於此 -->
+        <p style="text-align: center; color: var(--muted);">正在載入題目，請稍後...</p>
+      </section>
+    </div>
+  </main>
+
+  <!-- 3. 底部浮動儲存區 -->
+  <footer id="editor-footer" class="sticky-footer hidden">
+    <div class="footer-content">
+      <span id="save-status" class="save-status">未修改</span>
+      <button id="save-btn" class="primary-button">儲存所有修改</button>
+    </div>
+  </footer>
+
+  <script>
+    // ================== 後台控制核心邏輯 ==================
+    
+    // 與 app.js 配置保持一致的 API 網址，以及維度與技能定義
+    const API_URL = "https://script.google.com/macros/s/AKfycbzMaAqcYU38q7zKFbI-9vH_8R4x_TDDsYVzt4rUyj5vFeyN6tBcVGBKDVQJDLbQeOHe/exec";
+    
+    const dimensions = {
+      physical: { label: "體能", color: "#3db05e" },
+      emotional: { label: "情緒", color: "#d8c32f" },
+      mental: { label: "思維", color: "#e57c23" },
+      spirit: { label: "精神", color: "#e24e42" }
+    };
+    
+    const skillsMapping = {
+      AA: { dim: "physical", label: "飲食" },
+      AB: { dim: "physical", label: "睡眠" },
+      AC: { dim: "physical", label: "運動" },
+      BA: { dim: "emotional", label: "創造正向情緒" },
+      BB: { dim: "emotional", label: "排除負向情緒" },
+      BC: { dim: "emotional", label: "壓力管理" },
+      CA: { dim: "mental", label: "專注" },
+      CB: { dim: "mental", label: "放空" },
+      CC: { dim: "mental", label: "心流" },
+      DA: { dim: "spirit", label: "願景" },
+      DB: { dim: "spirit", label: "使命感" },
+      DC: { dim: "spirit", label: "意義" }
+    };
+
+    let password = "";
+    let currentQuestions = [];
+
+    // DOM 綁定
+    const el = {
+      loginSection: document.getElementById("login-section"),
+      editorSection: document.getElementById("editor-section"),
+      editorFooter: document.getElementById("editor-footer"),
+      adminPass: document.getElementById("admin-pass"),
+      loginBtn: document.getElementById("login-btn"),
+      loginError: document.getElementById("login-error"),
+      logoutBtn: document.getElementById("logout-btn"),
+      questionsContainer: document.getElementById("questions-container"),
+      saveBtn: document.getElementById("save-btn"),
+      saveStatus: document.getElementById("save-status")
+    };
+
+    // 綁定事件
+    el.loginBtn.addEventListener("click", handleLogin);
+    el.adminPass.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") handleLogin();
+    });
+    el.logoutBtn.addEventListener("click", handleLogout);
+    el.saveBtn.addEventListener("click", saveChanges);
+
+    // 處理登入
+    async function handleLogin() {
+      const pass = el.adminPass.value.trim();
+      if (!pass) {
+        showLoginError("請輸入管理密碼");
+        return;
+      }
+      
+      el.loginError.classList.add("hidden");
+      el.loginBtn.disabled = true;
+      el.loginBtn.textContent = "驗證中...";
+
+      // 透過拉取題目來驗證密碼是否正確
+      try {
+        const url = `${API_URL}?action=get_questions`;
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.success) {
+          // 密碼驗證方式：拉取是公開的，但寫入需要密碼。
+          // 我們在此階段將密碼記錄下來，供後續 POST 寫入時使用。
+          password = pass;
+          currentQuestions = result.questions;
+          
+          // 切換視圖
+          el.loginSection.classList.add("hidden");
+          el.editorSection.classList.remove("hidden");
+          el.editorFooter.classList.remove("hidden");
+          
+          renderQuestionsList();
+        } else {
+          showLoginError("無法取得題目，請確認 API URL 部署是否正確。");
+        }
+      } catch (err) {
+        showLoginError("網路連線失敗，請檢查 API 連線狀態。");
+      } finally {
+        el.loginBtn.disabled = false;
+        el.loginBtn.textContent = "登入後台";
+      }
+    }
+
+    // 登出
+    function handleLogout() {
+      password = "";
+      currentQuestions = [];
+      el.adminPass.value = "";
+      el.loginSection.classList.remove("hidden");
+      el.editorSection.classList.add("hidden");
+      el.editorFooter.classList.add("hidden");
+    }
+
+    function showLoginError(msg) {
+      el.loginError.textContent = msg;
+      el.loginError.classList.remove("hidden");
+    }
+
+    // 渲染 24 題編輯列表
+    function renderQuestionsList() {
+      // 確保依題號排序
+      currentQuestions.sort((a, b) => a.q - b.q);
+      
+      el.questionsContainer.innerHTML = currentQuestions.map((q, idx) => {
+        const skillInfo = skillsMapping[q.skill] || { dim: "physical", label: "未知" };
+        const dimInfo = dimensions[skillInfo.dim] || { label: "未知", color: "#666" };
+        
+        return `
+          <div class="question-row">
+            <div class="q-badge">Q${q.q}</div>
+            <div class="q-meta">
+              <span class="q-meta-dim" style="background-color: ${dimInfo.color}">${dimInfo.label}維度</span>
+              <span class="q-meta-skill">${skillInfo.label} (${q.skill})</span>
+            </div>
+            <div>
+              <textarea 
+                class="q-textarea" 
+                data-idx="${idx}"
+                oninput="updateQuestionText(${idx}, this.value)"
+              >${q.text}</textarea>
+            </div>
+          </div>
+        `;
+      }).join("");
+      
+      updateSaveStatus("已載入最新題目數據", "success");
+    }
+
+    // 記憶使用者修改的題目文字
+    window.updateQuestionText = function(idx, text) {
+      currentQuestions[idx].text = text;
+      updateSaveStatus("有未儲存的修改...", "loading");
+    };
+
+    function updateSaveStatus(msg, type = "") {
+      el.saveStatus.textContent = msg;
+      el.saveStatus.className = "save-status";
+      if (type) {
+        el.saveStatus.classList.add(type);
+      }
+    }
+
+    // 儲存修改至 Google Apps Script
+    async function saveChanges() {
+      updateSaveStatus("正在儲存修改至 Google 試算表...", "loading");
+      el.saveBtn.disabled = true;
+      el.saveBtn.textContent = "儲存中...";
+
+      const payload = {
+        action: "update_questions",
+        password: password,
+        questions: currentQuestions
+      };
+
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          updateSaveStatus("🎉 所有題目已成功同步至 Google 試算表！", "success");
+          setTimeout(() => {
+            updateSaveStatus("所有變更已儲存", "success");
+          }, 3000);
+        } else {
+          updateSaveStatus(`❌ 儲存失敗: ${result.error || "密碼錯誤"}`, "error");
+        }
+      } catch (err) {
+        updateSaveStatus("❌ 儲存失敗，請檢查網路連線狀態。", "error");
+      } finally {
+        el.saveBtn.disabled = false;
+        el.saveBtn.textContent = "儲存所有修改";
+      }
+    }
+  </script>
+</body>
+</html>

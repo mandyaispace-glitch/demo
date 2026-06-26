@@ -163,8 +163,23 @@ function convertRawScoresToSkills(rawScores) {
   });
 }
 
+// 載入雲端題目
+async function fetchQuestions() {
+  if (state.mode === "demo") return;
+  const url = `${CONFIG.API_URL}?action=get_questions`;
+  try {
+    const response = await fetch(url);
+    const result = await response.json();
+    if (result.success && result.questions && Array.isArray(result.questions) && result.questions.length === 24) {
+      CONFIG.questions = result.questions;
+    }
+  } catch (err) {
+    console.warn("無法從伺服器載入題目，將使用本地預設題目。", err);
+  }
+}
+
 // ================== 初始化與驗證流程 ==================
-function initApp() {
+async function initApp() {
   const urlParams = new URLSearchParams(window.location.search);
   state.email = urlParams.get("email");
   state.token = urlParams.get("token");
@@ -174,8 +189,10 @@ function initApp() {
     setupDemoMode();
   } else if (state.email && state.token) {
     state.mode = "production";
+    await fetchQuestions(); // 優先載入雲端題目
     fetchStudentStatus();
   } else {
+    await fetchQuestions(); // 優先載入雲端題目
     setupRegisterMode();
   }
 
