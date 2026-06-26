@@ -126,8 +126,10 @@ function doGet(e) {
 }
 
 /**
- * 處理 POST 請求 (提交前測或後測分數)
- * Payload 格式：{"email": "...", "token": "...", "testType": "pre|post", "scores": [5, 4, ...]}
+ * 處理 POST 請求 (提交前測或後測分數，並在首次填寫時自動註冊)
+ * Payload 格式：
+ * 首次填寫：{"email": "...", "name": "...", "testType": "pre", "scores": [5, 4, ...]}
+ * 後續填寫：{"email": "...", "token": "...", "testType": "post", "scores": [5, 4, ...]}
  */
 function doPost(e) {
   let params;
@@ -138,11 +140,12 @@ function doPost(e) {
   }
   
   const email = params.email;
-  const token = params.token;
+  const name = params.name; // 新註冊時傳遞的姓名
+  const token = params.token; // 已註冊學員傳遞的憑證
   const testType = params.testType; // "pre" 或 "post"
   const scores = params.scores;
   
-  if (!email || !token || !testType || !scores || !Array.isArray(scores) || scores.length !== 24) {
+  if (!email || !testType || !scores || !Array.isArray(scores) || scores.length !== 24) {
     return makeResponse({ success: false, error: "參數遺失或分數格式不正確 (須為 24 題分數)" }, 400);
   }
   
@@ -158,21 +161,55 @@ function doPost(e) {
       }
     }
     
+    let dbToken = "";
+    let studentName = "";
+    let writeRow = -1;
+    
     if (userRowIndex === -1) {
-      return makeResponse({ success: false, error: "此 Email 尚未註冊" }, 404);
+      // 1. 如果此 Email 尚未註冊，則進行「首次註冊 + 填寫前測」
+      if (testType !== "pre") {
+        return makeResponse({ success: false, error: "此信箱尚未註冊，無法進行後測。" }, 400);
+      }
+      if (!name) {
+        return makeResponse({ success: false, error: "首次填寫請提供您的姓名。" }, 400);
+      }
+      
+      studentName = name.trim();
+      dbToken = generateRandomToken();
+      
+      // 新增一行到試算表
+      sheet.appendRow([]);
+      writeRow = sheet.getLastRow();
+      
+      // 寫入基本資料
+      sheet.getRange(writeRow, COL.TIMESTAMP + 1).setValue(new Date());
+      sheet.getRange(writeRow, COL.EMAIL + 1).setValue(email.trim());
+      sheet.getRange(writeRow, COL.NAME + 1).setValue(studentName);
+      sheet.getRange(writeRow, COL.TOKEN + 1).setValue(dbToken);
+      
+      // 生成並寫入 Magic Link
+      const magicLink = CONFIG.FRONTEND_URL + "/?email=" + encodeURIComponent(email.trim()) + "&token=" + dbToken;
+      sheet.getRange(writeRow, COL.MAGIC_LINK + 1).setValue(magicLink);
+      
+    } else {
+      // 2. 如果已註冊，則為帶憑證的作答 (前測或後測)
+      if (!token) {
+        return makeResponse({ success: false, error: "此信箱已被註冊，請使用您的專屬 Magic Link 連結登入作答。" }, 403);
+      }
+      
+      const row = data[userRowIndex];
+      dbToken = row[COL.TOKEN].toString().trim();
+      studentName = row[COL.NAME].toString();
+      
+      // 驗證 Token 是否正確
+      if (dbToken !== token.trim()) {
+        return makeResponse({ success: false, error: "驗證失敗，專屬憑證不正確。" }, 403);
+      }
+      
+      writeRow = userRowIndex + 1;
     }
     
-    const row = data[userRowIndex];
-    const dbToken = row[COL.TOKEN].toString().trim();
-    const name = row[COL.NAME].toString();
-    
-    // 驗證 Token
-    if (dbToken !== token.trim()) {
-      return makeResponse({ success: false, error: "憑證不正確" }, 403);
-    }
-    
-    // 寫入對應區間 (試算表的 RowIndex 是 1-indexed，所以要在 userRowIndex + 1)
-    const writeRow = userRowIndex + 1;
+    // 寫入分數對應區間 (試算表的 RowIndex 是 1-indexed，所以要在 userRowIndex + 1)
     let startCol = (testType === "pre") ? COL.PRE_START + 1 : COL.POST_START + 1; // getRange 也是 1-indexed
     
     // 整排寫入 (1 row, 24 columns)
@@ -185,7 +222,7 @@ function doPost(e) {
     // 發送郵件通知
     if (CONFIG.ENABLE_EMAIL_NOTIFICATION) {
       try {
-        sendEmailNotification(email, name, dbToken, testType);
+        sendEmailNotification(email.trim(), studentName, dbToken, testType);
       } catch (mailErr) {
         Logger.log("郵件發送失敗但分數已成功儲存: " + mailErr.message);
       }
@@ -193,6 +230,7 @@ function doPost(e) {
     
     return makeResponse({
       success: true,
+      token: dbToken, // 回傳 Token 給前端，讓前端能夠在首次提交後維持登入狀態
       message: (testType === "pre" ? "前測" : "後測") + "分數提交成功！"
     });
     

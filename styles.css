@@ -1018,3 +1018,66 @@ h2 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* ==========================================================================
+   註冊表單樣式 (Registration Form Styles)
+   ========================================================================== */
+.registration-form {
+  background-color: var(--wash);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.form-instructions {
+  font-size: 0.95rem;
+  color: var(--body);
+  margin-bottom: 1.25rem;
+}
+
+.form-instructions b {
+  color: var(--teal-dark);
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  color: var(--ink);
+}
+
+.form-group label .required {
+  color: var(--color-spirit);
+  margin-left: 0.15rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background-color: var(--panel);
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+  transition: var(--transition);
+}
+
+.form-control:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(31, 148, 131, 0.15);
+}

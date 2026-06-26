@@ -113,6 +113,10 @@ const elements = {
   testTypeBadge: document.getElementById("test-type-badge"),
   welcomeStatusDesc: document.getElementById("welcome-status-desc"),
   startBtn: document.getElementById("start-btn"),
+  registrationForm: document.getElementById("registration-form"),
+  regName: document.getElementById("reg-name"),
+  regEmail: document.getElementById("reg-email"),
+  welcomeGreetingContainer: document.getElementById("welcome-greeting-container"),
   
   quizView: document.getElementById("quiz-view"),
   quizCategory: document.getElementById("quiz-category"),
@@ -164,15 +168,36 @@ function initApp() {
   const urlParams = new URLSearchParams(window.location.search);
   state.email = urlParams.get("email");
   state.token = urlParams.get("token");
-  const isDemo = urlParams.get("demo") === "true" || (!state.email && !state.token);
+  const isDemo = urlParams.get("demo") === "true";
 
   if (isDemo) {
     setupDemoMode();
-  } else {
+  } else if (state.email && state.token) {
+    state.mode = "production";
     fetchStudentStatus();
+  } else {
+    setupRegisterMode();
   }
 
   bindEvents();
+}
+
+// 啟動首次填寫註冊模式
+function setupRegisterMode() {
+  state.mode = "register";
+  state.status = "NEW";
+  
+  // 顯示註冊表單，隱藏個人稱呼
+  elements.registrationForm.classList.remove("hidden");
+  elements.welcomeGreetingContainer.classList.add("hidden");
+  
+  elements.testTypeBadge.textContent = "前測";
+  elements.testTypeBadge.style.backgroundColor = "var(--before)";
+  elements.welcomeStatusDesc.textContent = "歡迎開始您的精力評測。請在上方填寫您的基本資料，填寫完 24 題並提交後，系統將自動生成並寄送您的「個人專屬報告連結 (Magic Link)」至您的信箱。";
+  
+  // 隱藏加載畫面，顯示歡迎面板
+  elements.loadingView.classList.add("hidden");
+  elements.welcomeView.classList.remove("hidden");
 }
 
 // 啟動 Demo 體驗模式
@@ -234,19 +259,41 @@ async function fetchStudentStatus() {
 
 // 設定歡迎面板資訊
 function setupWelcomeView() {
+  elements.registrationForm.classList.add("hidden");
+  elements.welcomeGreetingContainer.classList.remove("hidden");
   elements.welcomeName.textContent = state.studentName;
+  
   if (state.status === "PRE_DONE") {
     elements.testTypeBadge.textContent = "後測";
     elements.testTypeBadge.style.backgroundColor = "var(--after)";
     elements.welcomeStatusDesc.textContent = "您先前已完成前測，本次測驗為輔導後的後測評量，將用來比對精力管理方案的效果。";
   } else {
     elements.testTypeBadge.textContent = "前測";
+    elements.testTypeBadge.style.backgroundColor = "var(--before)";
     elements.welcomeStatusDesc.textContent = "這是您第一次進行評測，此數據將作為您精力管理的基準點。";
   }
 }
 
 // ================== 問卷答題邏輯 ==================
 function startQuiz() {
+  if (state.mode === "register") {
+    const nameVal = elements.regName.value.trim();
+    const emailVal = elements.regEmail.value.trim();
+    
+    if (!nameVal || !emailVal) {
+      alert("請填寫姓名與電子信箱！");
+      return;
+    }
+    
+    if (!emailVal.includes("@")) {
+      alert("請輸入有效的電子信箱格式！");
+      return;
+    }
+    
+    state.studentName = nameVal;
+    state.email = emailVal;
+  }
+
   state.currentQuestionIndex = 0;
   state.currentAnswers = Array(24).fill(null);
   switchView("quiz-view");
@@ -343,10 +390,15 @@ async function submitQuizResults() {
   // 生產環境打 API 儲存 (傳送 24 題原始作答分數)
   const payload = {
     email: state.email,
-    token: state.token,
     testType: testType,
     scores: state.currentAnswers // 24 題原始作答分數 (0-5分)
   };
+  
+  if (state.mode === "register") {
+    payload.name = state.studentName;
+  } else {
+    payload.token = state.token;
+  }
   
   try {
     const response = await fetch(CONFIG.API_URL, {
@@ -358,6 +410,16 @@ async function submitQuizResults() {
     if (!result.success) {
       showError(result.error || "儲存資料失敗。");
       return;
+    }
+    
+    // 如果是新註冊，後端會回傳自動生成的 Token
+    if (result.token) {
+      state.token = result.token;
+      state.mode = "production";
+      
+      // 更新網址列的參數，這樣學員重整頁面時不會遺失登入狀態
+      const newUrl = `${window.location.origin}${window.location.pathname}?email=${encodeURIComponent(state.email)}&token=${encodeURIComponent(state.token)}`;
+      window.history.replaceState({}, "", newUrl);
     }
     
     // 儲存成功後，重新整理載入狀態

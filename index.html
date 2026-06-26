@@ -50,9 +50,23 @@
         </header>
 
         <article class="welcome-body">
-          <div class="user-greeting">
+          <div class="user-greeting" id="welcome-greeting-container">
             親愛的 <strong id="welcome-name">學員</strong> 您好：
           </div>
+          
+          <!-- 新增：初次登入時的註冊表單 -->
+          <div id="registration-form" class="registration-form hidden">
+            <p class="form-instructions">歡迎使用精力管理評測！請填寫基本資料以開始前測。評測完成後，系統會自動生成並寄送您的<b>個人專屬報告連結 (Magic Link)</b> 至信箱：</p>
+            <div class="form-group">
+              <label for="reg-name">姓名 <span class="required">*</span></label>
+              <input type="text" id="reg-name" class="form-control" placeholder="請輸入中文或英文姓名，例：張小明" required />
+            </div>
+            <div class="form-group">
+              <label for="reg-email">電子信箱 <span class="required">*</span></label>
+              <input type="email" id="reg-email" class="form-control" placeholder="請輸入收信信箱，例：example@mail.com" required />
+            </div>
+          </div>
+
           <p>本次評測共包含 <strong>24 題</strong> 關於體能、情緒、思維與精神的精力狀況檢測。</p>
           <div class="alert-box" id="welcome-status-box">
             <span class="status-badge" id="test-type-badge">前測</span>
