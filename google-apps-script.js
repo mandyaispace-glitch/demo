@@ -369,6 +369,7 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu("精力管理系統")
     .addItem("一鍵生成所有 Token 與 Magic Link", "generateAllTokensAndLinks")
+    .addItem("一鍵開通郵件授權 (點擊以授權)", "runPermissionTest")
     .addToUi();
 }
 
