@@ -76,6 +76,31 @@ function doGet(e) {
     }
   }
 
+  // 1.5 處理檢查 Email 是否已註冊的請求
+  if (action === "check_email") {
+    const email = e.parameter.email;
+    if (!email) {
+      return makeResponse({ success: false, error: "缺少 email 參數" }, 400);
+    }
+    try {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME);
+      if (!sheet) {
+        return makeResponse({ success: true, registered: false });
+      }
+      const data = sheet.getDataRange().getValues();
+      let registered = false;
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][COL.EMAIL].toString().trim().toLowerCase() === email.trim().toLowerCase()) {
+          registered = true;
+          break;
+        }
+      }
+      return makeResponse({ success: true, registered: registered });
+    } catch (err) {
+      return makeResponse({ success: false, error: "檢查 Email 失敗: " + err.message }, 500);
+    }
+  }
+
   // 2. 原本的學員狀態查詢請求
   const email = e.parameter.email;
   const token = e.parameter.token;

@@ -294,7 +294,7 @@ function setupWelcomeView() {
 }
 
 // ================== 問卷答題邏輯 ==================
-function startQuiz() {
+async function startQuiz() {
   if (state.mode === "register") {
     const nameVal = elements.regName.value.trim();
     const emailVal = elements.regEmail.value.trim();
@@ -309,6 +309,26 @@ function startQuiz() {
       return;
     }
     
+    // 檢查 Email 是否已被註冊
+    elements.startBtn.disabled = true;
+    elements.startBtn.textContent = "檢查中...";
+    try {
+      const checkUrl = `${CONFIG.API_URL}?action=check_email&email=${encodeURIComponent(emailVal)}`;
+      const response = await fetch(checkUrl);
+      const result = await response.json();
+      
+      if (result.success && result.registered) {
+        alert("此信箱已被註冊！請使用您的專屬 Magic Link 連結登入作答，或聯絡您的課程顧問。");
+        elements.startBtn.disabled = false;
+        elements.startBtn.textContent = "評測";
+        return;
+      }
+    } catch (err) {
+      console.warn("無法驗證信箱是否重複，將允許繼續答題。", err);
+    }
+    
+    elements.startBtn.disabled = false;
+    elements.startBtn.textContent = "評測";
     state.studentName = nameVal;
     state.email = emailVal;
   }
