@@ -5,7 +5,7 @@
 // ================== 系統配置區 ==================
 const CONFIG = {
   // 將此處替換為您的 Google Apps Script Web App URL
-  API_URL: "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE", 
+  API_URL: "https://script.google.com/macros/s/AKfycbzMaAqcYU38q7zKFbI-9vH_8R4x_TDDsYVzt4rUyj5vFeyN6tBcVGBKDVQJDLbQeOHe/exec", 
   
   // 評測維度定義
   dimensions: [
