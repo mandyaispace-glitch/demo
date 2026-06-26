@@ -25,6 +25,7 @@ const CONFIG = {
   ENABLE_EMAIL_NOTIFICATION: true, // 是否開啟郵件通知
   COACH_EMAIL: "mandyaispace@gmail.com", // 您的信箱（教練），多個信箱用逗號隔開
   OWNER_EMAIL: "Amychou43@gmail.com",  // 業主的信箱，多個信箱用逗號隔開
+  OWNER_NAME: "周小姐 (Amy Chou)",      // 業主名稱 (用於信件末尾簽名)
   
   // 後台管理密碼設定
   ADMIN_PASSWORD: "admin123" // 👈 題目後台管理密碼 (預設 admin123，您可在此修改)
@@ -422,6 +423,9 @@ function sendEmailNotification(email, name, token, testType) {
       </div>
       <p style="color: #8899a6; font-size: 13px; line-height: 1.5;">* 此網址為您的專屬登入憑證 (Magic Link)，請妥善保存，切勿將此信件轉寄給他人。<br>
       * 您可以在報告頁面調整滑桿模擬改善後的狀態，此模擬不會覆蓋您已提交的正式數據。</p>
+      <p style="text-align: right; margin-top: 25px; margin-bottom: 10px; font-size: 15px; color: #333333;">
+        <strong>${CONFIG.OWNER_NAME}</strong> 敬上
+      </p>
       <hr style="border: 0; border-top: 1px solid #e1e8ed; margin: 20px 0;">
       <p style="font-size: 12px; color: #aab8c2; text-align: center;">本信件由系統自動發送，請勿直接回覆。</p>
     </div>
