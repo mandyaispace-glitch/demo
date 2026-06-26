@@ -147,6 +147,18 @@ const elements = {
   demoBadge: document.getElementById("demo-badge")
 };
 
+// 將 24 題的原始作答分數轉換為 12 項技術的得分
+function convertRawScoresToSkills(rawScores) {
+  if (!rawScores || !Array.isArray(rawScores) || rawScores.length !== 24) return null;
+  return CONFIG.skills.map(skill => {
+    const relatedQuestions = CONFIG.questions.filter(q => q.skill === skill.code);
+    return relatedQuestions.reduce((total, q) => {
+      const qIndex = CONFIG.questions.findIndex(item => item.q === q.q);
+      return total + rawScores[qIndex];
+    }, 0);
+  });
+}
+
 // ================== 初始化與驗證流程 ==================
 function initApp() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -166,18 +178,26 @@ function initApp() {
 // 啟動 Demo 體驗模式
 function setupDemoMode() {
   state.mode = "demo";
-  state.status = "BOTH_DONE"; // 預設顯示完整Before/After對比
+  const urlParams = new URLSearchParams(window.location.search);
+  const startFromQuiz = urlParams.get("demo") === "true";
+  
   state.studentName = "體驗學員 (Webber)";
   state.email = "demo@example.com";
   
-  // 原書基準模擬數據：前測 58 分，後測 80 分
-  // 12項技術得分順序對應 CONFIG.skills：飲食, 睡眠, 運動, 正向情緒, 排除負向情緒, 壓力管理, 專注, 放空, 心流, 願景, 使命感, 人生意義
-  state.preScores = [5, 4, 5, 5, 5, 5, 6, 5, 5, 4, 4, 5];
-  state.postScores = [8, 6, 6, 6, 7, 6, 8, 7, 9, 5, 5, 7];
-  
   elements.demoBadge.classList.remove("hidden");
-  switchView("report-view");
-  renderReport();
+  
+  if (startFromQuiz) {
+    state.status = "NEW"; // 模擬新學員
+    setupWelcomeView();
+    switchView("welcome-view");
+  } else {
+    state.status = "BOTH_DONE"; // 預設直接顯示報告與沙盒
+    // 原書基準模擬數據：前測 58 分，後測 80 分
+    state.preScores = [5, 4, 5, 5, 5, 5, 6, 5, 5, 4, 4, 5];
+    state.postScores = [8, 6, 6, 6, 7, 6, 8, 7, 9, 5, 5, 7];
+    switchView("report-view");
+    renderReport();
+  }
 }
 
 // 從後端 API 取得狀態
@@ -195,8 +215,10 @@ async function fetchStudentStatus() {
     
     state.status = result.status;
     state.studentName = result.name;
-    state.preScores = result.preScores;
-    state.postScores = result.postScores;
+    
+    // 將後端傳回的 24 題原始分數轉換為 12 項技術得分
+    state.preScores = convertRawScoresToSkills(result.preScores);
+    state.postScores = convertRawScoresToSkills(result.postScores);
     
     if (state.status === "BOTH_DONE") {
       switchView("report-view");
@@ -299,23 +321,11 @@ async function submitQuizResults() {
   switchView("loading-view");
   elements.loadingView.querySelector("p").textContent = "正在計算並儲存您的精力數據，請稍後...";
   
-  // 將 24 題的作答結果，轉換並加總為 12 項技術得分
-  // 12項技術中，每項技術對應 2 題。例如 AA 對應 AA1, AA2。
-  // 我們直接加總這兩題的分數（合計 0-10 分）作為該技術的最終得分。
-  const calculatedSkillsScores = CONFIG.skills.map(skill => {
-    const relatedQuestions = CONFIG.questions.filter(q => q.skill === skill.code);
-    const sum = relatedQuestions.reduce((total, q) => {
-      // 找到該題在 currentAnswers 裡的作答值（0-5分）
-      const qIndex = CONFIG.questions.findIndex(item => item.q === q.q);
-      return total + state.currentAnswers[qIndex];
-    }, 0);
-    return sum;
-  });
-  
   const testType = (state.status === "PRE_DONE") ? "post" : "pre";
   
   if (state.mode === "demo") {
     // Demo 模式下，直接寫入本地 state 模擬存檔
+    const calculatedSkillsScores = convertRawScoresToSkills(state.currentAnswers);
     if (testType === "pre") {
       state.preScores = calculatedSkillsScores;
       state.status = "PRE_DONE";
@@ -330,12 +340,12 @@ async function submitQuizResults() {
     return;
   }
   
-  // 生產環境打 API 儲存
+  // 生產環境打 API 儲存 (傳送 24 題原始作答分數)
   const payload = {
     email: state.email,
     token: state.token,
     testType: testType,
-    scores: calculatedSkillsScores
+    scores: state.currentAnswers // 24 題原始作答分數 (0-5分)
   };
   
   try {
