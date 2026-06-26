@@ -177,12 +177,11 @@ function doPost(e) {
       studentName = name.trim();
       dbToken = generateRandomToken();
       
-      // 新增一行到試算表
-      sheet.appendRow([]);
+      // 新增一行並寫入時間戳記 (解決 appendRow 不能為空的 Google 限制)
+      sheet.appendRow([new Date()]);
       writeRow = sheet.getLastRow();
       
-      // 寫入基本資料
-      sheet.getRange(writeRow, COL.TIMESTAMP + 1).setValue(new Date());
+      // 寫入其餘基本資料
       sheet.getRange(writeRow, COL.EMAIL + 1).setValue(email.trim());
       sheet.getRange(writeRow, COL.NAME + 1).setValue(studentName);
       sheet.getRange(writeRow, COL.TOKEN + 1).setValue(dbToken);
