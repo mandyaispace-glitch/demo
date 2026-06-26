@@ -191,7 +191,9 @@ function doPost(e) {
   let params;
   try {
     params = JSON.parse(e.postData.contents);
+    logToSheet("doPost", "收到作答提交請求: " + JSON.stringify(params), "INFO");
   } catch (err) {
+    logToSheet("doPost", "解析 JSON 請求失敗: " + err.message, "ERROR");
     return makeResponse({ success: false, error: "無效的 JSON 內容" }, 400);
   }
   
@@ -203,10 +205,12 @@ function doPost(e) {
     const questions = params.questions;
     
     if (password !== CONFIG.ADMIN_PASSWORD) {
+      logToSheet("update_questions", "管理密碼錯誤，拒絕儲存！", "WARNING");
       return makeResponse({ success: false, error: "管理密碼錯誤，拒絕儲存！" }, 403);
     }
     
     if (!questions || !Array.isArray(questions) || questions.length !== 24) {
+      logToSheet("update_questions", "題目數量不正確 (須剛好為 24 題)", "WARNING");
       return makeResponse({ success: false, error: "題目數量不正確 (須剛好為 24 題)" }, 400);
     }
     
@@ -224,8 +228,10 @@ function doPost(e) {
       // 覆寫 2 到 25 列
       sheet.getRange(2, 1, 24, 4).setValues(rowsToWrite);
       
+      logToSheet("update_questions", "題目修改成功並同步至試算表", "INFO");
       return makeResponse({ success: true, message: "所有題目修改已同步至試算表！" });
     } catch (err) {
+      logToSheet("update_questions", "寫入題目失敗: " + err.message, "ERROR");
       return makeResponse({ success: false, error: "寫入題目失敗: " + err.message }, 500);
     }
   }
@@ -238,6 +244,7 @@ function doPost(e) {
   const scores = params.scores;
   
   if (!email || !testType || !scores || !Array.isArray(scores) || scores.length !== 24) {
+    logToSheet("doPost", "分數提交參數遺失或格式不正確", "WARNING");
     return makeResponse({ success: false, error: "參數遺失或分數格式不正確" }, 400);
   }
   
@@ -260,9 +267,11 @@ function doPost(e) {
     if (userRowIndex === -1) {
       // 1. 如果此 Email 尚未註冊，則進行「首次註冊 + 填寫前測」
       if (testType !== "pre") {
+        logToSheet("doPost", "此信箱尚未註冊，拒絕後測: " + email, "WARNING");
         return makeResponse({ success: false, error: "此信箱尚未註冊，無法進行後測。" }, 400);
       }
       if (!name) {
+        logToSheet("doPost", "首次填寫未提供姓名: " + email, "WARNING");
         return makeResponse({ success: false, error: "首次填寫請提供您的姓名。" }, 400);
       }
       
@@ -282,9 +291,11 @@ function doPost(e) {
       const magicLink = CONFIG.FRONTEND_URL + "/?email=" + encodeURIComponent(email.trim()) + "&token=" + dbToken;
       sheet.getRange(writeRow, COL.MAGIC_LINK + 1).setValue(magicLink);
       
+      logToSheet("doPost", "新學員註冊成功: " + studentName + " (" + email + ")，生成 Token: " + dbToken, "INFO");
     } else {
       // 2. 如果已註冊，則為帶憑證的作答 (前測或後測)
       if (!token) {
+        logToSheet("doPost", "信箱已被註冊，缺少 Token 拒絕作答: " + email, "WARNING");
         return makeResponse({ success: false, error: "此信箱已被註冊，請使用您的專屬 Magic Link 連結登入作答。" }, 403);
       }
       
@@ -294,10 +305,12 @@ function doPost(e) {
       
       // 驗證 Token 是否正確
       if (dbToken !== token.trim()) {
+        logToSheet("doPost", "驗證 Token 失敗: 輸入=" + token + ", 預期=" + dbToken + " (Email: " + email + ")", "WARNING");
         return makeResponse({ success: false, error: "驗證失敗，專屬憑證不正確。" }, 403);
       }
       
       writeRow = userRowIndex + 1;
+      logToSheet("doPost", "舊學員身分驗證成功: " + studentName + " (" + email + ")", "INFO");
     }
     
     // 寫入分數對應區間 (試算表的 RowIndex 是 1-indexed，所以要在 userRowIndex + 1)
@@ -309,12 +322,14 @@ function doPost(e) {
     
     // 更新時間戳記
     sheet.getRange(writeRow, COL.TIMESTAMP + 1).setValue(new Date());
+    logToSheet("doPost", "成功寫入 " + studentName + " 的 " + (testType === "pre" ? "前測" : "後測") + " 分數至第 " + writeRow + " 列", "INFO");
     
     // 發送郵件通知
     if (CONFIG.ENABLE_EMAIL_NOTIFICATION) {
       try {
         sendEmailNotification(email.trim(), studentName, dbToken, testType);
       } catch (mailErr) {
+        logToSheet("doPost", "郵件發送外部異常: " + mailErr.message, "ERROR");
         Logger.log("郵件發送失敗但分數已成功儲存: " + mailErr.message);
       }
     }
@@ -326,6 +341,7 @@ function doPost(e) {
     });
     
   } catch (err) {
+    logToSheet("doPost", "儲存失敗: " + err.message, "ERROR");
     return makeResponse({ success: false, error: "儲存失敗: " + err.message }, 500);
   }
 }
@@ -458,11 +474,14 @@ function sendEmailNotification(email, name, token, testType) {
   `;
   
   // 寄信給學員
+  logToSheet("sendEmailNotification", "嘗試發送學員信至: " + email, "INFO");
   try {
     GmailApp.sendEmail(email, studentSubject, "", {
       htmlBody: studentBody
     });
+    logToSheet("sendEmailNotification", "學員信發送成功: " + email, "INFO");
   } catch (err) {
+    logToSheet("sendEmailNotification", "學員信發送失敗: " + err.message + " (信箱: " + email + ")", "ERROR");
     Logger.log("學員郵件發送失敗: " + err.message);
   }
   
@@ -490,11 +509,15 @@ function sendEmailNotification(email, name, token, testType) {
   }
   
   if (adminEmails.length > 0) {
+    const adminEmailsJoined = adminEmails.join(",");
+    logToSheet("sendEmailNotification", "嘗試發送管理者信至: " + adminEmailsJoined, "INFO");
     try {
-      GmailApp.sendEmail(adminEmails.join(","), adminSubject, "", {
+      GmailApp.sendEmail(adminEmailsJoined, adminSubject, "", {
         htmlBody: adminBody
       });
+      logToSheet("sendEmailNotification", "管理者信發送成功: " + adminEmailsJoined, "INFO");
     } catch (err) {
+      logToSheet("sendEmailNotification", "管理者信發送失敗: " + err.message + " (信箱: " + adminEmailsJoined + ")", "ERROR");
       Logger.log("管理者郵件發送失敗: " + err.message);
     }
   }
@@ -508,6 +531,31 @@ function makeResponse(data, status = 200) {
                                .setMimeType(ContentService.MimeType.JSON);
   data.code = status;
   return output;
+}
+
+/**
+ * 系統日誌寫入函數：自動在試算表中建立「系統日誌」分頁並寫入訊息
+ */
+function logToSheet(action, message, level = "INFO") {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let logSheet = ss.getSheetByName("系統日誌");
+    if (!logSheet) {
+      logSheet = ss.insertSheet("系統日誌");
+      logSheet.appendRow(["時間戳記", "層級", "動作", "日誌內容"]);
+      // 凍結第一列，設定樣式
+      logSheet.setFrozenRows(1);
+      logSheet.getRange("A1:D1").setFontWeight("bold").setBackground("#eff6f2");
+    }
+    // 限制記錄最大為 1000 行，避免檔案過大
+    const lastRow = logSheet.getLastRow();
+    if (lastRow >= 1000) {
+      logSheet.deleteRows(2, 100); // 刪除舊的 100 筆記錄
+    }
+    logSheet.appendRow([new Date(), level, action, message]);
+  } catch (err) {
+    Logger.log("日誌寫入失敗: " + err.message);
+  }
 }
 
 /**
