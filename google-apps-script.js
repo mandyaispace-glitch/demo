@@ -582,7 +582,9 @@ function runPermissionTest() {
       `
     });
     Logger.log("測試信發送成功！請檢查信箱。");
+    SpreadsheetApp.getUi().alert("🎉 測試信已發送成功！\n請檢查您的信箱 (" + testEmail + ") 是否收到測試郵件。");
   } catch (err) {
     Logger.log("測試信發送失敗，錯誤原因: " + err.message);
+    SpreadsheetApp.getUi().alert("❌ 發送失敗！\n錯誤原因: " + err.message);
   }
 }
