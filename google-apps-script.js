@@ -554,3 +554,34 @@ function checkAndCreateQuestionsSheet() {
   }
   return sheet;
 }
+
+/**
+ * 授權與發信測試函數
+ * 
+ * 步驟：
+ * 1. 在 Apps Script 頂部選單選擇「runPermissionTest」
+ * 2. 點擊「執行」，依提示完成 Google 帳號授權
+ * 3. 檢查您的信箱是否收到測試信
+ */
+function runPermissionTest() {
+  const testEmail = CONFIG.COACH_EMAIL;
+  Logger.log("準備發送測試信至: " + testEmail);
+  try {
+    MailApp.sendEmail({
+      to: testEmail,
+      subject: "【精力管理系統】Google Apps Script 授權測試信",
+      htmlBody: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e1e8ed; border-radius: 8px;">
+          <h2 style="color: #1b95e0;">🎉 授權成功！</h2>
+          <p>您好，當您收到這封信時，代表您的 Google Apps Script 已成功開通發信授權！</p>
+          <p>現在網頁版評測系統填寫完畢後，學員與教練就能正常收到通知信了。</p>
+          <hr style="border: 0; border-top: 1px solid #e1e8ed; margin: 20px 0;">
+          <p style="font-size: 12px; color: #aab8c2;">本信件由系統自動發送測試，無需回覆。</p>
+        </div>
+      `
+    });
+    Logger.log("測試信發送成功！請檢查信箱。");
+  } catch (err) {
+    Logger.log("測試信發送失敗，錯誤原因: " + err.message);
+  }
+}
