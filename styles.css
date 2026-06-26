@@ -735,36 +735,49 @@ h2 {
 
 /* 書封卡片 */
 .book-quote-card {
-  display: grid;
-  grid-template-columns: 0.35fr 1fr;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
   align-items: center;
-  padding: 1rem;
+  padding: 1.5rem;
   border-radius: 12px;
   background: var(--lift-bg);
   border: 1px solid var(--lift-border);
+  text-align: center;
 }
 
 .book-quote-card img {
-  width: 100%;
+  width: 160px;
+  max-width: 100%;
   border-radius: 8px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   aspect-ratio: 3/4;
   object-fit: cover;
+  transition: var(--transition);
+}
+
+.book-quote-card img:hover {
+  transform: scale(1.05);
+}
+
+.book-quote-card div {
+  width: 100%;
 }
 
 .book-quote-card strong {
   display: block;
-  font-size: 0.95rem;
-  margin-bottom: 0.3rem;
+  font-size: 1.05rem;
+  margin-bottom: 0.5rem;
   color: var(--ink);
+  text-align: center;
 }
 
 .book-quote-card p {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   color: var(--body);
-  line-height: 1.5;
+  line-height: 1.6;
+  text-align: left;
 }
 
 /* 12項知識技術指標 */
