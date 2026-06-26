@@ -117,6 +117,7 @@ const elements = {
   regName: document.getElementById("reg-name"),
   regEmail: document.getElementById("reg-email"),
   welcomeGreetingContainer: document.getElementById("welcome-greeting-container"),
+  goPostBtn: document.getElementById("go-post-btn"),
   
   quizView: document.getElementById("quiz-view"),
   quizCategory: document.getElementById("quiz-category"),
@@ -262,7 +263,8 @@ async function fetchStudentStatus() {
     state.preScores = convertRawScoresToSkills(result.preScores);
     state.postScores = convertRawScoresToSkills(result.postScores);
     
-    if (state.status === "BOTH_DONE") {
+    // 若完成前測 (PRE_DONE) 或完成前後測 (BOTH_DONE)，都直接顯示報告頁
+    if (state.status === "BOTH_DONE" || state.status === "PRE_DONE") {
       switchView("report-view");
       renderReport();
     } else {
@@ -451,6 +453,13 @@ function renderReport() {
   // 基本資料寫入
   elements.profileName.textContent = state.studentName;
   elements.profileEmail.textContent = state.email;
+  
+  // 顯示或隱藏「進行後測」按鈕 (僅在只完成前測且非 Demo 時顯示)
+  if (state.status === "PRE_DONE" && state.mode !== "demo") {
+    elements.goPostBtn.classList.remove("hidden");
+  } else {
+    elements.goPostBtn.classList.add("hidden");
+  }
   
   // 計算總分
   const beforeTotal = sumScores(state.preScores);
@@ -886,6 +895,12 @@ function bindEvents() {
       
       renderReport();
     }
+  });
+
+  // 點擊「進行後測」按鈕
+  elements.goPostBtn.addEventListener("click", () => {
+    setupWelcomeView();
+    switchView("welcome-view");
   });
 }
 
