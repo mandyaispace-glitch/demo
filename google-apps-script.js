@@ -4,7 +4,10 @@
  * 部署步驟：
  * 1. 在 Google 試算表（Google Sheets）中，點選上方選單「擴充功能」 -> 「Apps Script」。
  * 2. 清空原本的代碼，將此檔案的所有內容貼上。
- * 3. 修改下方設定區的 CLIENT_ORIGIN 為您的 Vercel 前端網址（可放星號 *，但指定網址較安全）。
+ * 3. 修改下方設定區的 CONFIG 內容：
+ *    - FRONTEND_URL: 填入您的 Vercel 前端網址（例如 https://survey-demo.vercel.app）
+ *    - COACH_EMAIL: 填入您的電子信箱（教練）
+ *    - OWNER_EMAIL: 填入業主的電子信箱
  * 4. 點選右上方「網頁應用程式部署 (Deploy -> New deployment)」：
  *    - 類型選擇：網頁應用程式 (Web app)
  *    - 執行身分：我 (Me)
@@ -16,6 +19,12 @@
 const CONFIG = {
   SHEET_NAME: "學員名單", // 試算表分頁名稱
   CLIENT_ORIGIN: "*",    // 允許跨網域存取的前端來源，建議限制為您的 Vercel 網址，如 "https://client-a.vercel.app"
+  FRONTEND_URL: "https://demo.vercel.app", // 您的 Vercel 前端網頁網址，用來自動生成 Magic Link
+
+  // 郵件通知設定
+  ENABLE_EMAIL_NOTIFICATION: true, // 是否開啟郵件通知
+  COACH_EMAIL: "coach@example.com", // 您的信箱（教練），多個信箱用逗號隔開
+  OWNER_EMAIL: "owner@example.com"  // 業主的信箱，多個信箱用逗號隔開
 };
 
 // 欄位定義索引 (以 0 為基準，A=0, B=1...)
@@ -25,7 +34,8 @@ const COL = {
   NAME: 2,       // C欄：姓名
   TOKEN: 3,      // D欄：安全憑證 (Magic Link Token)
   PRE_START: 4,  // E欄：前測 Q1 開始的位置 (E 到 AB 欄)
-  POST_START: 28 // AC欄：後測 Q1 開始的位置 (AC 到 AZ 欄)
+  POST_START: 28, // AC欄：後測 Q1 開始的位置 (AC 到 AZ 欄)
+  MAGIC_LINK: 52 // BA欄：自動生成的免登入連結 (Magic Link)
 };
 
 /**
@@ -154,6 +164,7 @@ function doPost(e) {
     
     const row = data[userRowIndex];
     const dbToken = row[COL.TOKEN].toString().trim();
+    const name = row[COL.NAME].toString();
     
     // 驗證 Token
     if (dbToken !== token.trim()) {
@@ -171,6 +182,15 @@ function doPost(e) {
     // 更新時間戳記
     sheet.getRange(writeRow, COL.TIMESTAMP + 1).setValue(new Date());
     
+    // 發送郵件通知
+    if (CONFIG.ENABLE_EMAIL_NOTIFICATION) {
+      try {
+        sendEmailNotification(email, name, dbToken, testType);
+      } catch (mailErr) {
+        Logger.log("郵件發送失敗但分數已成功儲存: " + mailErr.message);
+      }
+    }
+    
     return makeResponse({
       success: true,
       message: (testType === "pre" ? "前測" : "後測") + "分數提交成功！"
@@ -182,14 +202,181 @@ function doPost(e) {
 }
 
 /**
+ * 試算表編輯觸發器：當手動輸入 Email 時，自動生成 Token 與 Magic Link
+ */
+function onEdit(e) {
+  const range = e.range;
+  const sheet = range.getSheet();
+  
+  // 僅在「學員名單」分頁，且修改 B 欄 (Email) 時觸發
+  if (sheet.getName() !== CONFIG.SHEET_NAME || range.getColumn() !== (COL.EMAIL + 1)) {
+    return;
+  }
+  
+  const row = range.getRow();
+  if (row === 1) return; // 排除標題列
+  
+  const email = range.getValue().toString().trim();
+  if (!email) return;
+  
+  // 檢查 Token 是否已存在
+  const tokenRange = sheet.getRange(row, COL.TOKEN + 1);
+  let token = tokenRange.getValue().toString().trim();
+  if (!token) {
+    token = generateRandomToken();
+    tokenRange.setValue(token);
+  }
+  
+  // 自動生成 Magic Link
+  const magicLinkRange = sheet.getRange(row, COL.MAGIC_LINK + 1);
+  const magicLink = CONFIG.FRONTEND_URL + "/?email=" + encodeURIComponent(email) + "&token=" + token;
+  magicLinkRange.setValue(magicLink);
+}
+
+/**
+ * 當試算表開啟時，自動新增自訂選單
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu("精力管理系統")
+    .addItem("一鍵生成所有 Token 與 Magic Link", "generateAllTokensAndLinks")
+    .addToUi();
+}
+
+/**
+ * 批量為所有學員生成 Token 與 Magic Link
+ */
+function generateAllTokensAndLinks() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME);
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert("找不到指定的試算表分頁：" + CONFIG.SHEET_NAME);
+    return;
+  }
+  
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    SpreadsheetApp.getUi().alert("目前沒有學員資料。");
+    return;
+  }
+  
+  let count = 0;
+  for (let row = 2; row <= lastRow; row++) {
+    const email = sheet.getRange(row, COL.EMAIL + 1).getValue().toString().trim();
+    if (!email) continue;
+    
+    let token = sheet.getRange(row, COL.TOKEN + 1).getValue().toString().trim();
+    let updated = false;
+    
+    if (!token) {
+      token = generateRandomToken();
+      sheet.getRange(row, COL.TOKEN + 1).setValue(token);
+      updated = true;
+    }
+    
+    const magicLinkRange = sheet.getRange(row, COL.MAGIC_LINK + 1);
+    const expectedLink = CONFIG.FRONTEND_URL + "/?email=" + encodeURIComponent(email) + "&token=" + token;
+    
+    if (magicLinkRange.getValue().toString().trim() !== expectedLink) {
+      magicLinkRange.setValue(expectedLink);
+      updated = true;
+    }
+    
+    if (updated) count++;
+  }
+  
+  SpreadsheetApp.getUi().alert("處理完成！已為 " + count + " 位學員生成/更新 Token 與 Magic Link。");
+}
+
+/**
+ * 產生 8 位數隨機 Token
+ */
+function generateRandomToken() {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+  for (let i = 0; i < 8; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
+/**
+ * 發送 HTML 郵件通知學員、教練與業主
+ */
+function sendEmailNotification(email, name, token, testType) {
+  const testTypeName = (testType === "pre") ? "前測" : "後測";
+  const reportUrl = CONFIG.FRONTEND_URL + "/?email=" + encodeURIComponent(email) + "&token=" + token;
+  
+  // 1. 發送給學員的郵件內容
+  const studentSubject = `【精力管理評測】您的${testTypeName}已完成！請查看您的個人報告`;
+  const studentBody = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e8ed; border-radius: 8px; background-color: #ffffff;">
+      <h2 style="color: #3db05e; border-bottom: 2px solid #3db05e; padding-bottom: 10px;">精力管理評測完成通知</h2>
+      <p>親愛的 <strong>${name}</strong> 您好：</p>
+      <p>感謝您參與精力管理評測，您已成功提交 <strong>${testTypeName}</strong> 分數。</p>
+      <p>系統已為您生成了專屬的<strong>互動式精力雷達圖與分析報告</strong>，您可以隨時點選下方按鈕查看或進行沙盒模擬調整：</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${reportUrl}" style="background-color: #3db05e; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">查看我的評測報告</a>
+      </div>
+      <p style="color: #8899a6; font-size: 13px; line-height: 1.5;">* 此網址為您的專屬登入憑證 (Magic Link)，請妥善保存，切勿將此信件轉寄給他人。<br>
+      * 您可以在報告頁面調整滑桿模擬改善後的狀態，此模擬不會覆蓋您已提交的正式數據。</p>
+      <hr style="border: 0; border-top: 1px solid #e1e8ed; margin: 20px 0;">
+      <p style="font-size: 12px; color: #aab8c2; text-align: center;">本信件由系統自動發送，請勿直接回覆。</p>
+    </div>
+  `;
+  
+  // 寄信給學員
+  try {
+    MailApp.sendEmail({
+      to: email,
+      subject: studentSubject,
+      htmlBody: studentBody
+    });
+  } catch (err) {
+    Logger.log("學員郵件發送失敗: " + err.message);
+  }
+  
+  // 2. 發送給教練與業主的郵件內容
+  const adminSubject = `【評測通知】學員 ${name} 已完成精力管理${testTypeName}`;
+  const adminBody = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e8ed; border-radius: 8px; background-color: #f5f8fa;">
+      <h3 style="color: #1b95e0; margin-top: 0;">學員作答通知</h3>
+      <p>您好：</p>
+      <p>學員 <strong>${name}</strong> (信箱: ${email}) 已於剛才完成並提交了 <strong>精力管理${testTypeName}</strong>。</p>
+      <p>您可以點選下方連結，直接檢視該學員的報告與雷達圖：</p>
+      <p><a href="${reportUrl}" style="color: #1b95e0; font-weight: bold; text-decoration: underline;">點此查看學員的互動報告</a></p>
+      <hr style="border: 0; border-top: 1px solid #e1e8ed; margin: 20px 0;">
+      <p style="font-size: 12px; color: #aab8c2;">本信件為系統自動通知，請勿回覆。</p>
+    </div>
+  `;
+  
+  // 寄信給教練與業主
+  const adminEmails = [];
+  if (CONFIG.COACH_EMAIL && CONFIG.COACH_EMAIL !== "coach@example.com") {
+    adminEmails.push(CONFIG.COACH_EMAIL);
+  }
+  if (CONFIG.OWNER_EMAIL && CONFIG.OWNER_EMAIL !== "owner@example.com") {
+    adminEmails.push(CONFIG.OWNER_EMAIL);
+  }
+  
+  if (adminEmails.length > 0) {
+    try {
+      MailApp.sendEmail({
+        to: adminEmails.join(","),
+        subject: adminSubject,
+        htmlBody: adminBody
+      });
+    } catch (err) {
+      Logger.log("管理者郵件發送失敗: " + err.message);
+    }
+  }
+}
+
+/**
  * 輔助函數：包裝 CORS JSON 回應
  */
 function makeResponse(data, status = 200) {
-  // Apps Script Web Apps 回傳 CORS header 的方法是透過 TextOutput 並指定 MimeType.JSON
   const output = ContentService.createTextOutput(JSON.stringify(data))
                                .setMimeType(ContentService.MimeType.JSON);
-                               
-  // 雖然 Apps Script 不直接支援設置 HTTP 狀態碼，但我們可以把狀態碼寫在回傳 JSON 中
   data.code = status;
   return output;
 }
