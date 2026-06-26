@@ -19,12 +19,12 @@
 const CONFIG = {
   SHEET_NAME: "學員名單", // 試算表分頁名稱
   CLIENT_ORIGIN: "*",    // 允許跨網域存取的前端來源，建議限制為您的 Vercel 網址，如 "https://client-a.vercel.app"
-  FRONTEND_URL: "https://demo.vercel.app", // 您的 Vercel 前端網頁網址，用來自動生成 Magic Link
+  FRONTEND_URL: "https://demo-gamma-mauve.vercel.app", // 您的 Vercel 前端網頁網址，用來自動生成 Magic Link
 
   // 郵件通知設定
   ENABLE_EMAIL_NOTIFICATION: true, // 是否開啟郵件通知
-  COACH_EMAIL: "coach@example.com", // 您的信箱（教練），多個信箱用逗號隔開
-  OWNER_EMAIL: "owner@example.com"  // 業主的信箱，多個信箱用逗號隔開
+  COACH_EMAIL: "mandyaispace@gmail.com", // 您的信箱（教練），多個信箱用逗號隔開
+  OWNER_EMAIL: "Amychou43@gmail.com"  // 業主的信箱，多個信箱用逗號隔開
 };
 
 // 欄位定義索引 (以 0 為基準，A=0, B=1...)
