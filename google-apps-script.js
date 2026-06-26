@@ -25,7 +25,7 @@ const CONFIG = {
   ENABLE_EMAIL_NOTIFICATION: true, // 是否開啟郵件通知
   COACH_EMAIL: "mandyaispace@gmail.com", // 您的信箱（教練），多個信箱用逗號隔開
   OWNER_EMAIL: "Amychou43@gmail.com",  // 業主的信箱，多個信箱用逗號隔開
-  OWNER_NAME: "周小姐 (Amy Chou)",      // 業主名稱 (用於信件末尾簽名)
+  OWNER_NAME: "林揚程",      // 業主名稱 (用於信件末尾簽名)
   
   // 後台管理密碼設定
   ADMIN_PASSWORD: "admin123" // 👈 題目後台管理密碼 (預設 admin123，您可在此修改)
