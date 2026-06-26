@@ -459,9 +459,7 @@ function sendEmailNotification(email, name, token, testType) {
   
   // 寄信給學員
   try {
-    MailApp.sendEmail({
-      to: email,
-      subject: studentSubject,
+    GmailApp.sendEmail(email, studentSubject, "", {
       htmlBody: studentBody
     });
   } catch (err) {
@@ -493,9 +491,7 @@ function sendEmailNotification(email, name, token, testType) {
   
   if (adminEmails.length > 0) {
     try {
-      MailApp.sendEmail({
-        to: adminEmails.join(","),
-        subject: adminSubject,
+      GmailApp.sendEmail(adminEmails.join(","), adminSubject, "", {
         htmlBody: adminBody
       });
     } catch (err) {
@@ -568,9 +564,7 @@ function runPermissionTest() {
   const testEmail = CONFIG.COACH_EMAIL;
   Logger.log("準備發送測試信至: " + testEmail);
   try {
-    MailApp.sendEmail({
-      to: testEmail,
-      subject: "【精力管理系統】Google Apps Script 授權測試信",
+    GmailApp.sendEmail(testEmail, "【精力管理系統】Google Apps Script 授權測試信", "", {
       htmlBody: `
         <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e1e8ed; border-radius: 8px;">
           <h2 style="color: #1b95e0;">🎉 授權成功！</h2>
