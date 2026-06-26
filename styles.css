@@ -1081,3 +1081,191 @@ h2 {
   border-color: var(--teal);
   box-shadow: 0 0 0 3px rgba(31, 148, 131, 0.15);
 }
+
+/* ==========================================================================
+   業主推廣與學習資源區塊樣式 (Promo Panel Styles)
+   ========================================================================== */
+.promo-panel {
+  margin-top: 2rem;
+  padding: 2.5rem;
+  background: var(--panel);
+}
+
+.promo-container {
+  display: grid;
+  grid-template-columns: 1.2fr auto 1.5fr;
+  gap: 2.5rem;
+  align-items: stretch;
+}
+
+.promo-book-section {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.promo-book-cover {
+  width: 130px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+  aspect-ratio: 3/4;
+  object-fit: cover;
+}
+
+.promo-book-cover:hover {
+  transform: translateY(-8px) rotate(2deg);
+}
+
+.promo-book-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.promo-tag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--teal);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.promo-book-details h2 {
+  font-size: 1.35rem;
+  color: var(--ink);
+  margin: 0.1rem 0;
+  font-weight: 800;
+}
+
+.promo-book-subtitle {
+  font-size: 0.88rem;
+  color: var(--muted);
+  font-weight: 700;
+  margin: 0;
+}
+
+.promo-book-desc {
+  font-size: 0.82rem;
+  color: var(--body);
+  line-height: 1.6;
+  margin: 0.5rem 0 1rem 0;
+}
+
+.promo-actions {
+  margin-top: auto;
+}
+
+.promo-btn {
+  display: inline-block;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+  font-weight: 700;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+
+.promo-divider {
+  width: 1px;
+  background-color: var(--line);
+  align-self: stretch;
+}
+
+.promo-links-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.promo-links-section h3 {
+  font-size: 1.15rem;
+  color: var(--ink);
+  margin: 0;
+  font-weight: 800;
+}
+
+.promo-links-section > p {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0 0 0.8rem 0;
+}
+
+.promo-links-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.promo-link-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.2rem;
+  border-radius: 10px;
+  background: var(--wash);
+  border: 1.5px solid transparent;
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.promo-link-card:hover {
+  background: var(--panel);
+  border-color: var(--teal);
+  box-shadow: var(--shadow-sm);
+  transform: translateX(4px);
+}
+
+.promo-link-icon {
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.promo-link-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.promo-link-info h4 {
+  font-size: 0.88rem;
+  color: var(--ink);
+  margin: 0;
+  font-weight: 800;
+}
+
+.promo-link-info p {
+  font-size: 0.75rem;
+  color: var(--body);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* 響應式適配額外樣式 */
+@media (max-width: 1024px) {
+  .promo-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .promo-divider {
+    height: 1px;
+    width: 100%;
+    align-self: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .promo-book-section {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .promo-book-cover {
+    width: 120px;
+  }
+  .promo-link-card {
+    padding: 0.8rem 1rem;
+  }
+}
