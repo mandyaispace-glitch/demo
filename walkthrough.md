@@ -38,13 +38,18 @@
     *   **D1**: `Token`
     *   **E1 ~ AB1**: 分別輸入 `前測_Q1` 到 `前測_Q24`
     *   **AC1 ~ AZ1**: 分別輸入 `後測_Q1` 到 `後測_Q24`
+    *   **BA1**: `Magic Link` （自動填入，欄位不能留空或放其他資料）
 3.  點選上方選單 **「擴充功能 (Extensions)」 -> 「Apps Script」**。
-4.  複製並貼上 [google-apps-script.js](file:///C:/Users/manma/.gemini/antigravity/scratch/energy-survey-master/google-apps-script.js) 中的所有程式碼。
-5.  點擊右上方 **「部署 (Deploy)」 -> 「新增部署 (New deployment)」**：
+4.  複製並貼上 [google-apps-script.js](file:///C:/Users/manma/OneDrive/Documents/Antigrivity/Assessment%20Tool/google-apps-script.js) 中的所有程式碼。
+5.  **修改設定區 CONFIG**：
+    *   `FRONTEND_URL`: 修改成您的 Vercel 前端網址（例如 `https://survey-demo.vercel.app`）。
+    *   `COACH_EMAIL`: 填入您的信箱（教練），當有人完成測驗時會寄信通知您。
+    *   `OWNER_EMAIL`: 填入業主的信箱，讓業主也能收到通知。
+6.  點擊右上方 **「部署 (Deploy)」 -> 「新增部署 (New deployment)」**：
     *   點擊齒輪選擇「網頁應用程式 (Web app)」。
     *   執行身分選擇：**「我」**。
-    *   誰有權限存取選擇：**「所有人 (Anyone)」**（注意：若為 Google Workspace 帳號，請務必選擇 Anyone 而非限組織內成員）。
-6.  完成後複製系統產生的 **「網頁應用程式 URL」**。
+    *   誰有權限存取選擇：**「所有人 (Anyone)」**。
+7.  完成後複製系統產生的 **「網頁應用程式 URL」**。
 
 ---
 
@@ -80,13 +85,12 @@
 
 ---
 
-### 第五步：顧問發送 Magic Link 與學員作答
-1.  顧問在試算表輸入學生的資料，並設定一個 Token（如手機末四碼，或隨機生成的碼如 `tokenA`）：
-    *   **B2 (Email)**: `student@gmail.com`
-    *   **C2 (姓名)**: `張小明`
-    *   **D2 (Token)**: `a8f9`
-2.  利用 Excel 公式在 E 欄自動產生專屬免登入網址：
-    `=CONCATENATE("https://survey-client-d.vercel.app/?email=", B2, "&token=", D2)`
-3.  顧問複製該網址，發送給張小明。
-4.  張小明點開網址直接點擊「開始測驗」，作答 24 題後提交。資料庫將自動在前測欄位寫入分數。
-5.  在第二次輔導結束後，張小明再次點選「同一個網址」，網頁會自動識別並引導他進行「後測」。後測完成後，他便能直接看到前後測 Before/After 對比報告。
+### 第五步：自動生成 Magic Link 與學員作答、郵件通知
+1.  **自動/批量生成連結**：
+    *   **方法 A (自動)**：在「學員名單」分頁中，只要在 **B 欄 (Email)** 輸入新信箱，系統的 `onEdit` 觸發器會**自動在 D 欄生成 8 位數隨機 Token，並在 BA 欄直接產生 Magic Link**！
+    *   **方法 B (手動一鍵生成)**：如果您一次貼上多名學員，可以點選試算表頂部選單的 **「精力管理系統」 -> 「一鍵生成所有 Token 與 Magic Link」**，系統將一次為所有缺失連結的學員批量補齊。
+2.  **發送連結**：顧問複製 BA 欄生成的專屬網址，發送給學員。
+3.  **開始與自動郵件通知**：
+    *   學員點開網址直接點擊「開始測驗」，作答 24 題後提交。
+    *   提交成功後，**系統會自動向該學員、教練、業主發送精美 HTML 郵件通知**，信中包含查看個人報告的專屬連結。
+    *   學員在輔導結束後，點選「同一個網址」即可進行「後測」。後測完成後同樣會觸發郵件通知，且點開報告即可看到前後測對比的雷達圖！
