@@ -145,8 +145,9 @@ function doGet(e) {
     let hasPre = false;
     for (let col = COL.PRE_START; col < COL.PRE_START + 24; col++) {
       const val = row[col];
-      if (val !== "" && val !== null && !isNaN(val)) {
-        preScores.push(Number(val));
+      const isValValid = val !== "" && val !== null && !isNaN(val);
+      preScores.push(isValValid ? Number(val) : 0);
+      if (isValValid) {
         hasPre = true;
       }
     }
@@ -156,8 +157,9 @@ function doGet(e) {
     let hasPost = false;
     for (let col = COL.POST_START; col < COL.POST_START + 24; col++) {
       const val = row[col];
-      if (val !== "" && val !== null && !isNaN(val)) {
-        postScores.push(Number(val));
+      const isValValid = val !== "" && val !== null && !isNaN(val);
+      postScores.push(isValValid ? Number(val) : 0);
+      if (isValValid) {
         hasPost = true;
       }
     }
