@@ -152,9 +152,10 @@ const elements = {
   demoBadge: document.getElementById("demo-badge")
 };
 
-// 將 24 題的原始作答分數轉換為 12 項技術的得分
 function convertRawScoresToSkills(rawScores) {
-  if (!rawScores || !Array.isArray(rawScores) || rawScores.length !== 24) return null;
+  if (!rawScores || !Array.isArray(rawScores) || rawScores.length !== 24) {
+    return Array(12).fill(0); // 確保長度不符時返回 12 個 0 避免前端崩潰
+  }
   return CONFIG.skills.map(skill => {
     const relatedQuestions = CONFIG.questions.filter(q => q.skill === skill.code);
     return relatedQuestions.reduce((total, q) => {
