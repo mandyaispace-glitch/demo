@@ -461,10 +461,20 @@ async function submitQuizResults() {
       window.history.replaceState({}, "", newUrl);
     }
     
+    // 前端分開顯示「評測資料已儲存」與「郵件通知是否成功」
+    if (result.emailSuccess === false) {
+      const errMsg = (result.emailErrors && result.emailErrors.length > 0) 
+        ? result.emailErrors.join("\n") 
+        : "未知錯誤";
+      alert(`✅ 評測資料已成功儲存！\n\n⚠️ 提醒：系統通知信發送失敗，原因如下：\n${errMsg}\n\n您可以將目前的網頁網址複製並儲存，作為您日後查看報告的專屬免登入連結。`);
+    } else {
+      alert("🎉 評測資料儲存成功，且系統通知郵件已順利寄出！");
+    }
+    
     // 儲存成功後，重新整理載入狀態
     fetchStudentStatus();
   } catch (err) {
-    showError("網路儲存失敗，請檢查網路連線後重新載入。");
+    showError("網路儲存失敗，請檢查網路連線與 API 狀態後重新載入。");
   }
 }
 

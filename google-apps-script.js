@@ -19,7 +19,7 @@
 const CONFIG = {
   SHEET_NAME: "學員名單", // 試算表分頁名稱
   CLIENT_ORIGIN: "*",    // 允許跨網域存取的前端來源，建議限制為您的 Vercel 網址，如 "https://client-a.vercel.app"
-  FRONTEND_URL: "https://demo-gamma-mauve.vercel.app", // 您的 Vercel 前端網頁網址，用來自動生成 Magic Link
+  FRONTEND_URL: "https://energy-management-assessment-demo.vercel.app", // 您的 Vercel 前端網頁網址，用來自動生成 Magic Link
 
   // 郵件通知設定
   ENABLE_EMAIL_NOTIFICATION: true, // 是否開啟郵件通知
@@ -28,7 +28,7 @@ const CONFIG = {
   OWNER_NAME: "Hank 能量管理團隊",      // 業主名稱 (用於信件末尾簽名)
   
   // 後台管理密碼設定
-  ADMIN_PASSWORD: "admin123" // 👈 題目後台管理密碼 (預設 admin123，您可在此修改)
+  ADMIN_PASSWORD: "energyAdmin2026" // 👈 後台管理密碼 (已變更預設 admin123，請在此修改)
 };
 
 // 欄位定義索引 (以 0 為基準，A=0, B=1...)
@@ -191,7 +191,11 @@ function doPost(e) {
   let params;
   try {
     params = JSON.parse(e.postData.contents);
-    logToSheet("doPost", "收到作答提交請求: " + JSON.stringify(params), "INFO");
+    // 敏感資料防範：在日誌中遮蔽密碼和 Token
+    const logParams = JSON.parse(JSON.stringify(params));
+    if (logParams.password) logParams.password = "******";
+    if (logParams.token) logParams.token = "******";
+    logToSheet("doPost", "收到 POST 請求: " + JSON.stringify(logParams), "INFO");
   } catch (err) {
     logToSheet("doPost", "解析 JSON 請求失敗: " + err.message, "ERROR");
     return makeResponse({ success: false, error: "無效的 JSON 內容" }, 400);
@@ -199,7 +203,23 @@ function doPost(e) {
   
   const action = params.action;
   
-  // 1. 處理修改題目的請求
+  // 1. 處理驗證管理密碼的請求
+  if (action === "verify_admin_password") {
+    const password = params.password;
+    if (!password) {
+      logToSheet("verify_admin_password", "未提供密碼", "WARNING");
+      return makeResponse({ success: false, error: "未提供密碼" }, 400);
+    }
+    if (password === CONFIG.ADMIN_PASSWORD) {
+      logToSheet("verify_admin_password", "管理密碼驗證成功", "INFO");
+      return makeResponse({ success: true, message: "密碼驗證成功！" });
+    } else {
+      logToSheet("verify_admin_password", "管理密碼驗證失敗", "WARNING");
+      return makeResponse({ success: false, error: "管理密碼錯誤，拒絕登入！" }, 403);
+    }
+  }
+
+  // 2. 處理修改題目的請求
   if (action === "update_questions") {
     const password = params.password;
     const questions = params.questions;
@@ -236,7 +256,7 @@ function doPost(e) {
     }
   }
   
-  // 2. 原本的提交測驗分數請求
+  // 3. 提交測驗分數請求
   const email = params.email;
   const name = params.name; // 新註冊時傳遞的姓名
   const token = params.token; // 已註冊學員傳遞的憑證
@@ -268,11 +288,11 @@ function doPost(e) {
       // 1. 如果此 Email 尚未註冊，則進行「首次註冊 + 填寫前測」
       if (testType !== "pre") {
         logToSheet("doPost", "此信箱尚未註冊，拒絕後測: " + email, "WARNING");
-        return makeResponse({ success: false, error: "此信箱尚未註冊，無法進行後測。" }, 400);
+        return makeResponse({ success: false, dataSaved: false, error: "此信箱尚未註冊，無法進行後測。" }, 400);
       }
       if (!name) {
         logToSheet("doPost", "首次填寫未提供姓名: " + email, "WARNING");
-        return makeResponse({ success: false, error: "首次填寫請提供您的姓名。" }, 400);
+        return makeResponse({ success: false, dataSaved: false, error: "首次填寫請提供您的姓名。" }, 400);
       }
       
       studentName = name.trim();
@@ -291,12 +311,12 @@ function doPost(e) {
       const magicLink = CONFIG.FRONTEND_URL + "/?email=" + encodeURIComponent(email.trim()) + "&token=" + dbToken;
       sheet.getRange(writeRow, COL.MAGIC_LINK + 1).setValue(magicLink);
       
-      logToSheet("doPost", "新學員註冊成功: " + studentName + " (" + email + ")，生成 Token: " + dbToken, "INFO");
+      logToSheet("doPost", "新學員註冊成功: " + studentName + " (" + email + ")，已生成安全 Token", "INFO");
     } else {
       // 2. 如果已註冊，則為帶憑證的作答 (前測或後測)
       if (!token) {
         logToSheet("doPost", "信箱已被註冊，缺少 Token 拒絕作答: " + email, "WARNING");
-        return makeResponse({ success: false, error: "此信箱已被註冊，請使用您的專屬 Magic Link 連結登入作答。" }, 403);
+        return makeResponse({ success: false, dataSaved: false, error: "此信箱已被註冊，請使用您的專屬 Magic Link 連結登入作答。" }, 403);
       }
       
       const row = data[userRowIndex];
@@ -305,8 +325,8 @@ function doPost(e) {
       
       // 驗證 Token 是否正確
       if (dbToken !== token.trim()) {
-        logToSheet("doPost", "驗證 Token 失敗: 輸入=" + token + ", 預期=" + dbToken + " (Email: " + email + ")", "WARNING");
-        return makeResponse({ success: false, error: "驗證失敗，專屬憑證不正確。" }, 403);
+        logToSheet("doPost", "驗證 Token 失敗 (Email: " + email + ")", "WARNING");
+        return makeResponse({ success: false, dataSaved: false, error: "驗證失敗，專屬憑證不正確。" }, 403);
       }
       
       writeRow = userRowIndex + 1;
@@ -325,10 +345,19 @@ function doPost(e) {
     logToSheet("doPost", "成功寫入 " + studentName + " 的 " + (testType === "pre" ? "前測" : "後測") + " 分數至第 " + writeRow + " 列", "INFO");
     
     // 發送郵件通知
+    let emailSuccess = true;
+    let emailErrors = [];
     if (CONFIG.ENABLE_EMAIL_NOTIFICATION) {
       try {
-        sendEmailNotification(email.trim(), studentName, dbToken, testType);
+        const mailResult = sendEmailNotification(email.trim(), studentName, dbToken, testType);
+        emailSuccess = mailResult.studentSent && mailResult.adminSent;
+        emailErrors = mailResult.errors;
+        if (!emailSuccess) {
+          logToSheet("doPost", "郵件部分或全部發送失敗: " + emailErrors.join("; "), "WARNING");
+        }
       } catch (mailErr) {
+        emailSuccess = false;
+        emailErrors.push(mailErr.message);
         logToSheet("doPost", "郵件發送外部異常: " + mailErr.message, "ERROR");
         Logger.log("郵件發送失敗但分數已成功儲存: " + mailErr.message);
       }
@@ -336,13 +365,16 @@ function doPost(e) {
     
     return makeResponse({
       success: true,
-      token: dbToken, // 回傳 Token 給前端，讓前端能夠在首次提交後維持登入狀態
-      message: (testType === "pre" ? "前測" : "後測") + "分數提交成功！"
+      token: dbToken,
+      dataSaved: true,
+      emailSuccess: emailSuccess,
+      emailErrors: emailErrors,
+      message: (testType === "pre" ? "前測" : "後測") + "分數提交成功！" + (emailSuccess ? "" : " (郵件通知失敗)")
     });
     
   } catch (err) {
     logToSheet("doPost", "儲存失敗: " + err.message, "ERROR");
-    return makeResponse({ success: false, error: "儲存失敗: " + err.message }, 500);
+    return makeResponse({ success: false, dataSaved: false, error: "儲存失敗: " + err.message }, 500);
   }
 }
 
@@ -452,6 +484,10 @@ function sendEmailNotification(email, name, token, testType) {
   const testTypeName = (testType === "pre") ? "前測" : "後測";
   const reportUrl = CONFIG.FRONTEND_URL + "/?email=" + encodeURIComponent(email) + "&token=" + token;
   
+  let studentSent = false;
+  let adminSent = false;
+  const errors = [];
+
   // 1. 發送給學員的郵件內容
   const studentSubject = `【精力管理評測】您的${testTypeName}已完成！請查看您的個人報告`;
   const studentBody = `
@@ -479,8 +515,10 @@ function sendEmailNotification(email, name, token, testType) {
     GmailApp.sendEmail(email, studentSubject, "", {
       htmlBody: studentBody
     });
+    studentSent = true;
     logToSheet("sendEmailNotification", "學員信發送成功: " + email, "INFO");
   } catch (err) {
+    errors.push("學員信發送失敗: " + err.message);
     logToSheet("sendEmailNotification", "學員信發送失敗: " + err.message + " (信箱: " + email + ")", "ERROR");
     Logger.log("學員郵件發送失敗: " + err.message);
   }
@@ -515,21 +553,31 @@ function sendEmailNotification(email, name, token, testType) {
       GmailApp.sendEmail(adminEmailsJoined, adminSubject, "", {
         htmlBody: adminBody
       });
+      adminSent = true;
       logToSheet("sendEmailNotification", "管理者信發送成功: " + adminEmailsJoined, "INFO");
     } catch (err) {
+      errors.push("管理者信發送失敗: " + err.message);
       logToSheet("sendEmailNotification", "管理者信發送失敗: " + err.message + " (信箱: " + adminEmailsJoined + ")", "ERROR");
       Logger.log("管理者郵件發送失敗: " + err.message);
     }
+  } else {
+    adminSent = true; // 沒有設定管理者信箱，視為成功
   }
+
+  return {
+    studentSent: studentSent,
+    adminSent: adminSent,
+    errors: errors
+  };
 }
 
 /**
  * 輔助函數：包裝 CORS JSON 回應
  */
 function makeResponse(data, status = 200) {
+  data.code = status;
   const output = ContentService.createTextOutput(JSON.stringify(data))
                                .setMimeType(ContentService.MimeType.JSON);
-  data.code = status;
   return output;
 }
 

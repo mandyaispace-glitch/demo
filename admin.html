@@ -272,15 +272,28 @@
       el.loginBtn.disabled = true;
       el.loginBtn.textContent = "驗證中...";
 
-      // 透過拉取題目來驗證密碼是否正確
       try {
+        // 1. 呼叫真正的密碼驗證 API (POST)
+        const verifyResponse = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "verify_admin_password",
+            password: pass
+          })
+        });
+        const verifyResult = await verifyResponse.json();
+        
+        if (!verifyResult.success) {
+          showLoginError(verifyResult.error || "密碼錯誤，拒絕登入！");
+          return;
+        }
+        
+        // 2. 驗證成功後，拉取題目清單
         const url = `${API_URL}?action=get_questions`;
         const response = await fetch(url);
         const result = await response.json();
         
         if (result.success) {
-          // 密碼驗證方式：拉取是公開的，但寫入需要密碼。
-          // 我們在此階段將密碼記錄下來，供後續 POST 寫入時使用。
           password = pass;
           currentQuestions = result.questions;
           
@@ -294,7 +307,7 @@
           showLoginError("無法取得題目，請確認 API URL 部署是否正確。");
         }
       } catch (err) {
-        showLoginError("網路連線失敗，請檢查 API 連線狀態。");
+        showLoginError("網路連線失敗，請檢查 API 連線與帳號授權狀態。");
       } finally {
         el.loginBtn.disabled = false;
         el.loginBtn.textContent = "登入後台";
