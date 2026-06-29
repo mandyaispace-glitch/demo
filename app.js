@@ -261,8 +261,8 @@ async function fetchStudentStatus() {
     state.studentName = result.name;
     
     // 將後端傳回的 24 題原始分數轉換為 12 項技術得分
-    state.preScores = convertRawScoresToSkills(result.preScores);
-    state.postScores = convertRawScoresToSkills(result.postScores);
+    state.preScores = result.preScores ? convertRawScoresToSkills(result.preScores) : null;
+    state.postScores = result.postScores ? convertRawScoresToSkills(result.postScores) : null;
     
     // 若完成前測 (PRE_DONE) 或完成前後測 (BOTH_DONE)，都直接顯示報告頁
     if (state.status === "BOTH_DONE" || state.status === "PRE_DONE") {
