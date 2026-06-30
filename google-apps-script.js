@@ -23,12 +23,12 @@ const CONFIG = {
 
   // 郵件通知設定
   ENABLE_EMAIL_NOTIFICATION: true, // 是否開啟郵件通知
-  COACH_EMAIL: "mandyaispace@gmail.com", // 您的信箱（教練），多個信箱用逗號隔開
-  OWNER_EMAIL: "Amychou43@gmail.com",  // 業主的信箱，多個信箱用逗號隔開
+  COACH_EMAIL: "YOUR_COACH_EMAIL", // 👈 請在您的 Google Apps Script 網頁編輯器中修改，多個信箱用逗號隔開
+  OWNER_EMAIL: "YOUR_OWNER_EMAIL",  // 👈 請在您的 Google Apps Script 網頁編輯器中修改，多個信箱用逗號隔開
   OWNER_NAME: "Hank 能量管理團隊",      // 業主名稱 (用於信件末尾簽名)
   
   // 後台管理密碼設定
-  ADMIN_PASSWORD: "energyAdmin2026" // 👈 後台管理密碼 (已變更預設 admin123，請在此修改)
+  ADMIN_PASSWORD: "YOUR_SECURE_ADMIN_PASSWORD" // 👈 後台管理密碼 (請在您的 Google Apps Script 網頁編輯器中修改)
 };
 
 // 欄位定義索引 (以 0 為基準，A=0, B=1...)
